@@ -1,0 +1,204 @@
+{
+  "app": {
+    "name": "जिम ऐप"
+  },
+  "common": {
+    "currency": "₹",
+    "menu": "मेनू",
+    "back": "वापस",
+    "loading": "लोड हो रहा है…",
+    "save": "सहेजें",
+    "cancel": "रद्द करें"
+  },
+  "members": {
+    "title": "सदस्य",
+    "search": "नाम या फ़ोन से खोजें",
+    "add": "+ नया सदस्य",
+    "empty": "अभी कोई सदस्य नहीं",
+    "filter": {
+      "all": "सभी",
+      "overdue": "बकाया",
+      "expiring": "समाप्त हो रहे",
+      "active": "सक्रिय"
+    },
+    "section": {
+      "overdue": "बकाया",
+      "expiring": "जल्द समाप्त",
+      "active": "सक्रिय"
+    },
+    "status": {
+      "daysOverdue_one": "{{count}} दिन बकाया",
+      "daysOverdue_other": "{{count}} दिन बकाया",
+      "paymentPending": "भुगतान लंबित",
+      "daysLeft_one": "{{count}} दिन बाकी",
+      "daysLeft_other": "{{count}} दिन बाकी"
+    },
+    "menu": {
+      "plans": "प्लान",
+      "settings": "सेटिंग्स",
+      "logout": "लॉग आउट"
+    }
+  },
+  "detail": {
+    "title": "सदस्य",
+    "joined": "{{date}} को जुड़े",
+    "recordPayment": "भुगतान दर्ज करें",
+    "menu": {
+      "edit": "संपादित करें",
+      "remove": "हटाएँ"
+    },
+    "status": {
+      "overdue": "बकाया",
+      "active": "सक्रिय",
+      "expiring": "समाप्ति निकट",
+      "paymentPending": "भुगतान लंबित",
+      "days_one": "{{count}} दिन",
+      "days_other": "{{count}} दिन",
+      "expiredOn": "{{date}} को समाप्त",
+      "endsOn": "{{date}} को समाप्त"
+    },
+    "history": {
+      "title": "भुगतान इतिहास",
+      "viewAll": "सभी देखें",
+      "empty": "अभी कोई भुगतान नहीं",
+      "recordedBy": "{{name}} द्वारा"
+    }
+  },
+  "payment": {
+    "method": {
+      "cash": "नकद",
+      "upi": "यूपीआई",
+      "other": "अन्य"
+    }
+  },
+  "plans": {
+    "title": "प्लान",
+    "helper": "मूल्य पर टैप करके बदलें। बदलाव सिर्फ़ नई सदस्यता पर लागू होंगे — मौजूदा सदस्यों का मूल्य पुराना ही रहेगा.",
+    "usedBy_one": "{{count}} सदस्य उपयोग कर रहे हैं",
+    "usedBy_other": "{{count}} सदस्य उपयोग कर रहे हैं",
+    "add": "+ नया प्लान जोड़ें",
+    "menu": {
+      "archive": "संग्रहित करें"
+    },
+    "new": {
+      "duration": "अवधि (महीने)",
+      "price": "मूल्य",
+      "save": "प्लान सहेजें",
+      "cancel": "रद्द करें"
+    },
+    "toast": {
+      "priceUpdated": "मूल्य अपडेट हो गया",
+      "archived": "प्लान संग्रहित",
+      "created": "प्लान बनाया गया",
+      "failed": "प्लान अपडेट नहीं हो सका"
+    }
+  },
+  "public": {
+    "payTitle": "अपनी फ़ीस का भुगतान करें",
+    "scan": "किसी भी यूपीआई ऐप से स्कैन करें",
+    "upiApps": "PhonePe · Google Pay · Paytm · BHIM",
+    "timings": "समय",
+    "address": "पता",
+    "contact": "संपर्क",
+    "notFound": "जिम नहीं मिला"
+  },
+  "settings": {
+    "title": "सेटिंग्स",
+    "save": "बदलाव सहेजें",
+    "section": {
+      "identity": "पहचान",
+      "publicInfo": "सार्वजनिक जानकारी",
+      "payments": "भुगतान",
+      "overdue": "बकाया"
+    },
+    "gymName": "जिम का नाम",
+    "publicUrl": "सार्वजनिक URL",
+    "slugWarning": "इसे बदलने पर मुद्रित QR कोड अमान्य हो जाएँगे।",
+    "viewPublic": "सार्वजनिक पेज देखें",
+    "address": "पता",
+    "timings": "समय",
+    "contactPhone": "संपर्क फ़ोन",
+    "upiId": "यूपीआई आईडी",
+    "upiDisplayName": "QR पर दिखाने वाला नाम",
+    "gracePeriod": "छूट अवधि",
+    "days": "दिन",
+    "toast": {
+      "saved": "सेटिंग्स सहेजी गईं",
+      "failed": "सेटिंग्स सहेजी नहीं जा सकीं"
+    }
+  },
+  "auth": {
+    "heading": "अपने जिम में जारी रखें",
+    "subtitle": "साइन इन करें या नया खाता बनाएँ",
+    "google": "Google से जारी रखें",
+    "or": "या",
+    "email": "ईमेल",
+    "password": "पासवर्ड",
+    "login": "लॉग इन",
+    "create": "खाता बनाएँ",
+    "terms": "जारी रखकर आप सेवा शर्तों से सहमत होते हैं।"
+  },
+  "setup": {
+    "welcome": "स्वागत है",
+    "title": "अपना जिम सेट करें",
+    "subtitle": "बस मूल बातें — आप कभी भी बदल सकते हैं।",
+    "submit": "जिम बनाएँ",
+    "selected": "चुना गया",
+    "plansHelper": "जोड़ने के लिए प्लान पर टैप करें। मूल्य बदलने के लिए मूल्य पर टैप करें।",
+    "section": {
+      "gym": "आपका जिम",
+      "publicInfo": "सार्वजनिक जानकारी",
+      "payments": "भुगतान",
+      "plans": "आप जो प्लान देते हैं ({{count}} चुने)"
+    },
+    "gymName": "जिम का नाम",
+    "publicUrl": "सार्वजनिक URL",
+    "address": "पता",
+    "timings": "समय",
+    "contactPhone": "संपर्क फ़ोन",
+    "upiId": "यूपीआई आईडी",
+    "plan": {
+      "oneMonth": "1 महीना",
+      "nMonths": "{{count}} महीने"
+    },
+    "toast": {
+      "created": "जिम बनाया गया",
+      "failed": "जिम नहीं बनाया जा सका"
+    }
+  },
+  "new": {
+    "title": "सदस्य जोड़ें",
+    "name": "नाम",
+    "phone": "फ़ोन",
+    "plan": "प्लान",
+    "startDate": "शुरुआत की तारीख़",
+    "submit": "सदस्य जोड़ें",
+    "placeholder": {
+      "name": "पूरा नाम",
+      "phone": "फ़ोन नंबर"
+    },
+    "toast": {
+      "added": "{{name}} जोड़ दिए गए",
+      "failed": "सदस्य नहीं जोड़ा जा सका"
+    }
+  },
+  "pay": {
+    "title": "सदस्यता नवीनीकरण",
+    "plan": "प्लान",
+    "amount": "राशि",
+    "date": "तारीख़",
+    "method": "तरीक़ा",
+    "qr": {
+      "label": "सदस्य को दिखाएँ",
+      "amountTo": "{{currency}}{{amount}} → {{name}}",
+      "ref": "Ref: {{ref}}",
+      "scan": "किसी भी यूपीआई ऐप से स्कैन करें"
+    },
+    "confirmReceived": "भुगतान प्राप्त हुआ",
+    "confirmCash": "नकद प्राप्त हुआ",
+    "toast": {
+      "recorded": "भुगतान दर्ज हो गया ✓",
+      "failed": "भुगतान दर्ज नहीं हो सका"
+    }
+  }
+}

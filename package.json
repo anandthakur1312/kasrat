@@ -1,0 +1,13 @@
+{
+  "name": "gym-app",
+  "private": true,
+  "version": "0.0.0",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace packages/frontend",
+    "build": "npm run build --workspace packages/frontend",
+    "lint": "npm run lint --workspace packages/frontend"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Frontend (Vite)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--workspace", "packages/frontend"],
+      "port": 5173
+    },
+    {
+      "name": "Frontend (Vite, real API)",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "VITE_USE_REAL_API=1 npm run dev --workspace packages/frontend"],
+      "port": 5173
+    },
+    {
+      "name": "Backend (Fastify)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--workspace", "packages/backend"],
+      "port": 3001
+    }
+  ]
+}

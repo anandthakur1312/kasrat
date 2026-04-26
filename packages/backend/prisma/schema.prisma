@@ -1,0 +1,89 @@
+// Prisma schema for Gym App
+// SQLite for local dev; switch provider to "postgresql" for AWS deploy.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Owner {
+  id        String   @id
+  email     String   @unique
+  name      String
+  createdAt DateTime @default(now())
+  gyms      Gym[]
+}
+
+model Gym {
+  id              String       @id
+  ownerId         String
+  name            String
+  slug            String       @unique
+  address         String
+  timings         String
+  contactPhone    String
+  upiId           String
+  upiDisplayName  String
+  gracePeriodDays Int          @default(3)
+  createdAt       DateTime     @default(now())
+  owner           Owner        @relation(fields: [ownerId], references: [id])
+  plans           Plan[]
+  members         Member[]
+}
+
+model Plan {
+  id             String       @id
+  gymId          String
+  durationMonths Int
+  price          Int
+  name           String
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  gym            Gym          @relation(fields: [gymId], references: [id])
+  memberships    Membership[]
+}
+
+model Member {
+  id          String       @id
+  gymId       String
+  name        String
+  phone       String
+  joinDate    String
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  gym         Gym          @relation(fields: [gymId], references: [id])
+  memberships Membership[]
+}
+
+model Membership {
+  id          String    @id
+  memberId    String
+  planId      String
+  startDate   String
+  endDate     String
+  amountDue   Int
+  amountPaid  Int       @default(0)
+  customPrice Int?
+  status      String    @default("active")
+  createdAt   DateTime  @default(now())
+  member      Member    @relation(fields: [memberId], references: [id])
+  plan        Plan      @relation(fields: [planId], references: [id])
+  payments    Payment[]
+}
+
+model Payment {
+  id              String     @id
+  membershipId    String
+  amount          Int
+  method          String
+  paidOn          String
+  referenceNote   String     @default("")
+  recordedBy      String
+  recordedByName  String
+  createdAt       DateTime   @default(now())
+  membership      Membership @relation(fields: [membershipId], references: [id])
+}

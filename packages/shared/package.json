@@ -1,0 +1,12 @@
+{
+  "name": "@gym-app/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/types.ts",
+  "types": "./src/types.ts",
+  "exports": {
+    ".": "./src/types.ts",
+    "./types": "./src/types.ts"
+  }
+}

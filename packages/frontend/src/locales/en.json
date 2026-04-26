@@ -1,0 +1,204 @@
+{
+  "app": {
+    "name": "Gym App"
+  },
+  "common": {
+    "currency": "₹",
+    "menu": "Menu",
+    "back": "Back",
+    "loading": "Loading…",
+    "save": "Save",
+    "cancel": "Cancel"
+  },
+  "members": {
+    "title": "Members",
+    "search": "Search by name or phone",
+    "add": "+ Add member",
+    "empty": "No members yet",
+    "filter": {
+      "all": "All",
+      "overdue": "Overdue",
+      "expiring": "Expiring",
+      "active": "Active"
+    },
+    "section": {
+      "overdue": "Overdue",
+      "expiring": "Expiring soon",
+      "active": "Active"
+    },
+    "status": {
+      "daysOverdue_one": "{{count}} day overdue",
+      "daysOverdue_other": "{{count}} days overdue",
+      "paymentPending": "Payment pending",
+      "daysLeft_one": "{{count}} day left",
+      "daysLeft_other": "{{count}} days left"
+    },
+    "menu": {
+      "plans": "Plans",
+      "settings": "Settings",
+      "logout": "Logout"
+    }
+  },
+  "detail": {
+    "title": "Member",
+    "joined": "Joined {{date}}",
+    "recordPayment": "Record payment",
+    "menu": {
+      "edit": "Edit",
+      "remove": "Remove"
+    },
+    "status": {
+      "overdue": "OVERDUE",
+      "active": "ACTIVE",
+      "expiring": "EXPIRING",
+      "paymentPending": "PAYMENT PENDING",
+      "days_one": "{{count}} day",
+      "days_other": "{{count}} days",
+      "expiredOn": "Expired {{date}}",
+      "endsOn": "Ends {{date}}"
+    },
+    "history": {
+      "title": "Payment history",
+      "viewAll": "View all",
+      "empty": "No payments yet",
+      "recordedBy": "by {{name}}"
+    }
+  },
+  "payment": {
+    "method": {
+      "cash": "Cash",
+      "upi": "UPI",
+      "other": "Other"
+    }
+  },
+  "plans": {
+    "title": "Plans",
+    "helper": "Tap a price to edit. Changes apply only to new memberships — existing members keep their original price.",
+    "usedBy_one": "Used by {{count}} member",
+    "usedBy_other": "Used by {{count}} members",
+    "add": "+ Add new plan",
+    "menu": {
+      "archive": "Archive"
+    },
+    "new": {
+      "duration": "Duration (months)",
+      "price": "Price",
+      "save": "Save plan",
+      "cancel": "Cancel"
+    },
+    "toast": {
+      "priceUpdated": "Price updated",
+      "archived": "Plan archived",
+      "created": "Plan created",
+      "failed": "Could not update plan"
+    }
+  },
+  "public": {
+    "payTitle": "Pay your fees",
+    "scan": "Scan with any UPI app",
+    "upiApps": "PhonePe · Google Pay · Paytm · BHIM",
+    "timings": "Timings",
+    "address": "Address",
+    "contact": "Contact",
+    "notFound": "Gym not found"
+  },
+  "new": {
+    "title": "Add member",
+    "name": "Name",
+    "phone": "Phone",
+    "plan": "Plan",
+    "startDate": "Start date",
+    "submit": "Add member",
+    "placeholder": {
+      "name": "Full name",
+      "phone": "Phone number"
+    },
+    "toast": {
+      "added": "{{name}} added",
+      "failed": "Could not add member"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "save": "Save changes",
+    "section": {
+      "identity": "Identity",
+      "publicInfo": "Public info",
+      "payments": "Payments",
+      "overdue": "Overdue"
+    },
+    "gymName": "Gym name",
+    "publicUrl": "Public URL",
+    "slugWarning": "Changing this will invalidate any printed QR codes.",
+    "viewPublic": "View public page",
+    "address": "Address",
+    "timings": "Timings",
+    "contactPhone": "Contact phone",
+    "upiId": "UPI ID",
+    "upiDisplayName": "Display name on QR",
+    "gracePeriod": "Grace period",
+    "days": "days",
+    "toast": {
+      "saved": "Settings saved",
+      "failed": "Could not save settings"
+    }
+  },
+  "auth": {
+    "heading": "Continue to your gym",
+    "subtitle": "Sign in or create your gym account",
+    "google": "Continue with Google",
+    "or": "OR",
+    "email": "Email",
+    "password": "Password",
+    "login": "Log in",
+    "create": "Create account",
+    "terms": "By continuing, you agree to the terms of service."
+  },
+  "setup": {
+    "welcome": "Welcome",
+    "title": "Set up your gym",
+    "subtitle": "Just the basics — you can change anything later.",
+    "submit": "Create gym",
+    "selected": "Selected",
+    "plansHelper": "Tap a plan to include it. Tap the price to edit.",
+    "section": {
+      "gym": "Your gym",
+      "publicInfo": "Public info",
+      "payments": "Payments",
+      "plans": "Plans you offer ({{count}} selected)"
+    },
+    "gymName": "Gym name",
+    "publicUrl": "Public URL",
+    "address": "Address",
+    "timings": "Timings",
+    "contactPhone": "Contact phone",
+    "upiId": "UPI ID",
+    "plan": {
+      "oneMonth": "1 month",
+      "nMonths": "{{count}} months"
+    },
+    "toast": {
+      "created": "Gym created",
+      "failed": "Could not create gym"
+    }
+  },
+  "pay": {
+    "title": "Renew membership",
+    "plan": "Plan",
+    "amount": "Amount",
+    "date": "Date",
+    "method": "Method",
+    "qr": {
+      "label": "Show to member",
+      "amountTo": "{{currency}}{{amount}} to {{name}}",
+      "ref": "Ref: {{ref}}",
+      "scan": "Scan with any UPI app"
+    },
+    "confirmReceived": "Confirm payment received",
+    "confirmCash": "Confirm cash received",
+    "toast": {
+      "recorded": "Payment recorded ✓",
+      "failed": "Could not record payment"
+    }
+  }
+}
