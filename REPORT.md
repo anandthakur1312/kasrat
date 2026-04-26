@@ -61,6 +61,7 @@ fitness-club/
     │       │   └── utils.ts        # cn() helper
     │       ├── components/
     │       │   ├── avatar.tsx
+    │       │   ├── confirm-dialog.tsx   # destructive-action modal
     │       │   └── language-toggle.tsx
     │       ├── locales/
     │       │   ├── en.json
@@ -70,6 +71,8 @@ fitness-club/
     │           ├── member-detail.tsx
     │           ├── record-payment.tsx
     │           ├── add-member.tsx
+    │           ├── edit-member.tsx       # /members/:id/edit
+    │           ├── payment-history.tsx   # /members/:id/payments
     │           ├── plans.tsx
     │           ├── settings.tsx
     │           ├── auth.tsx
@@ -88,10 +91,11 @@ fitness-club/
             ├── server.ts     # all routes, in one file
             ├── db.ts         # PrismaClient singleton
             └── lib/
-                ├── dates.ts      # local-date helpers (avoid UTC bugs)
-                ├── ids.ts        # short prefix-based IDs
-                ├── serialize.ts  # Prisma → API shape
-                └── status.ts     # overdue/expiring/active logic
+                ├── dates.ts          # local-date helpers (avoid UTC bugs)
+                ├── ids.ts            # short prefix-based IDs
+                ├── serialize.ts      # Prisma → API shape
+                ├── status.ts         # overdue/expiring/active logic
+                └── status.test.ts    # Vitest tests for status.ts
 ```
 
 ---
@@ -224,7 +228,9 @@ React Router v6 with these paths (matches SPEC §6):
 | -------------------------- | ------------------------------- |
 | `/`                        | `routes/members-list.tsx`       |
 | `/members/:id`             | `routes/member-detail.tsx`      |
+| `/members/:id/edit`        | `routes/edit-member.tsx`        |
 | `/members/:id/pay`         | `routes/record-payment.tsx`     |
+| `/members/:id/payments`    | `routes/payment-history.tsx`    |
 | `/members/new`             | `routes/add-member.tsx`         |
 | `/plans`                   | `routes/plans.tsx`              |
 | `/settings`                | `routes/settings.tsx`           |
@@ -236,6 +242,26 @@ Top-level `App.tsx` also wires:
 - `<Toaster position="bottom-center" />` from `sonner` for toasts.
 - A small **DEV nav bar** (only in `import.meta.env.DEV`) that lists
   links to every route — handy for jumping around without state.
+
+**Member-detail menu wiring:** the ⋯ menu on `/members/:id` opens
+**Edit** (→ `/members/:id/edit`) and **Remove**. Remove uses
+`<ConfirmDialog>` — the destructive path requires a deliberate click.
+Remove is a soft delete (`isActive=false`); the member's payment
+history is preserved.
+
+**Members-list error UI:** if the initial `GET /members` fails (e.g.
+backend is down), the list shows a "Couldn't load members" panel with a
+**Retry** button. Action writes (record payment, etc.) still toast on
+failure as before.
+
+**Settings slug-change confirm:** changing the `Public URL` field and
+clicking Save opens a confirm modal explaining that printed QR codes
+pointing to the old URL will stop working. Same `<ConfirmDialog>`
+component as Remove.
+
+**Hamburger menu:** EN/हिंदी language toggle now lives inside the
+top-bar hamburger menu (alongside Plans / Settings / Logout) so it's
+reachable from every screen, not just `/login` and `/g/:slug`.
 
 ### 6.2 The API switch — `src/lib/api.ts`
 
@@ -267,6 +293,8 @@ A thin `fetch` wrapper. Each method maps to one endpoint:
 | `getMembersList()`        | `GET  /members`                             |
 | `getMemberDetail(id)`     | `GET  /members/:id`                         |
 | `createMember(req)`       | `POST /members`                             |
+| `updateMember(id, req)`   | `PATCH /members/:id`                        |
+| `deleteMember(id)`        | `DELETE /members/:id`                       |
 | `recordPayment(req)`      | `POST /payments`                            |
 | `getPlans()`              | `GET  /plans`                               |
 | `createPlan(req)`         | `POST /plans`                               |
@@ -382,6 +410,11 @@ All in one file — short enough to skim in 5 minutes. Notable behavior:
   - else → create a fresh membership starting `paidOn`.
 - `PATCH /plans/:id` only updates the plan; existing memberships keep
   the price they were created with (SPEC §7.6).
+- `PATCH /members/:id` updates a member's name/phone (used by the
+  edit-member screen).
+- `DELETE /members/:id` is a **soft delete** — flips `isActive=false`.
+  Memberships and payment history are preserved so reports stay
+  accurate.
 - `POST /gyms` is the first-time-setup endpoint — overwrites the single
   existing gym row + replaces its plans. Will need a real "create
   another gym" path in multi-tenant mode.
@@ -410,6 +443,27 @@ Run with `npm run db:seed --workspace packages/backend`. It uses
 - 1 active member (Anjali, ends `today + 42`).
 
 If you change the date logic, this is the canary.
+
+### 7.6 Tests — `src/lib/status.test.ts`
+
+```bash
+npm run test --workspace packages/backend
+```
+
+Vitest runs 8 unit tests covering `computeStatus`:
+
+- payment_pending when there's no current membership
+- payment_pending when current membership has `amountPaid=0`
+- active when end date is well in the future
+- expiring within the 7-day window
+- overdue once past `endDate + gracePeriodDays`
+- queued membership prevents `overdue` even when the current one expired
+- queued membership prevents `expiring` even when within 7 days
+- `amountDue` uses the *current* plan price when overdue, not the
+  membership's frozen `amountDue`
+
+Tests use `vi.useFakeTimers()` + `vi.setSystemTime('2026-04-26')` so
+the assertions are stable regardless of the host clock.
 
 ---
 
@@ -558,17 +612,11 @@ Listed so you don't think they were missed:
 - **Multi-tenant filtering.** Backend uses `prisma.gym.findFirst()`.
   Schema already has `Owner → Gym` foreign key, so adding an
   `ownerId`/`gymId` filter to every route is mechanical.
-- **Edit/Remove member.** i18n keys exist (`detail.menu.edit`,
-  `detail.menu.remove`) but the actions aren't wired.
-- **Initial-load error UI on `/`.** Action writes toast on failure;
-  the initial GET just stays on `Loading…`.
-- **"View all" payments.** Member detail shows last 5; the link doesn't
-  go anywhere (no `/members/:id/payments` route).
-- **Language toggle inside the app.** Currently only on `/login` and
-  `/g/:slug`. SPEC says it should be in the hamburger menu too.
-- **Tests.** No Vitest, no Playwright. Type checking + manual
-  end-to-end was the budget.
+- **End-to-end tests.** Vitest covers the status-computation logic on
+  the backend (8 unit tests in `packages/backend/src/lib/status.test.ts`).
+  No Playwright / browser tests yet.
 - **PWA / offline / push.** No service worker, no manifest, no favicon.
+- **Dark mode toggle.** CSS variables are wired, no toggle UI yet.
 - **Production deploy.** Not configured — see §11.
 
 ---
@@ -686,21 +734,9 @@ npm run prisma:generate  --workspace packages/backend   # regen Prisma client
 npm run prisma:migrate   --workspace packages/backend   # create + apply migration
 npm run db:push          --workspace packages/backend   # sync schema (no migration)
 npm run db:seed          --workspace packages/backend   # seed fixtures
+npm run test             --workspace packages/backend   # vitest run
 ```
 
 Env vars (`packages/backend/.env`, copy from `.env.example`):
 - `DATABASE_URL` — Prisma datasource URL (default `file:./dev.db`).
 - `PORT`         — Fastify port (default `3001`).
-
----
-
-## 14. Security note
-
-The GitHub PAT was sent in chat to perform this push. **Rotate it now**
-at https://github.com/settings/tokens — assume it's compromised. It is
-not stored in this repository, in `git config`, or in any file I wrote
-(it was only used in the one-shot `git push` URL).
-
-For future pushes from this machine, prefer:
-- `gh auth login` (recommended), or
-- the macOS Keychain helper (`git config credential.helper osxkeychain`).
