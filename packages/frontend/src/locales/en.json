@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Gym App"
+    "name": "Kasrat"
   },
   "common": {
     "currency": "₹",
@@ -165,7 +165,7 @@
     "days": "days",
     "slugConfirm": {
       "title": "Change public URL?",
-      "body": "Members visiting gymapp.in/g/{{oldSlug}} will see Gym not found. Any printed QR codes pointing to the old URL will stop working. Continue?",
+      "body": "Members visiting kasrat.in/g/{{oldSlug}} will see Gym not found. Any printed QR codes pointing to the old URL will stop working. Continue?",
       "confirm": "Yes, change it"
     },
     "toast": {

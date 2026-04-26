@@ -112,7 +112,7 @@ export default function SettingsRoute() {
             <Field label={t('settings.publicUrl')}>
               <div className="flex items-stretch rounded-md border border-border overflow-hidden">
                 <span className="inline-flex items-center px-3 text-xs text-muted-foreground bg-secondary">
-                  gymapp.in/g/
+                  kasrat.in/g/
                 </span>
                 <input
                   type="text"

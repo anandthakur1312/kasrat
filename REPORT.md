@@ -1,6 +1,6 @@
-# Gym App — Build Report
+# Kasrat — Build Report
 
-A complete handoff document for the Gym App. Written so you can understand
+A complete handoff document for Kasrat. Written so you can understand
 what was built, why, where everything lives, how to run and rebuild it,
 and how to debug each layer.
 
@@ -162,7 +162,7 @@ npm run db:seed         --workspace packages/backend   # loads fixtures
 ```
 
 That populates `packages/backend/prisma/dev.db` with one gym
-("Sagar Fitness Club", slug `sagarfitness`), 4 plans, 3 members, 6
+("Gungun Fitness Club", slug `gungun`), 4 plans, 3 members, 6
 memberships, and 5 payments — matching the SPEC §9 fixtures exactly.
 
 ### 5.1 Run frontend in mock mode (no backend needed)
@@ -484,8 +484,8 @@ the assertions are stable regardless of the host clock.
 
 ### 8.2 "Member visits the public page"
 
-1. They scan a printed QR or open `/g/sagarfitness`.
-2. Frontend calls `GET /public/gyms/sagarfitness`.
+1. They scan a printed QR or open `/g/gungun`.
+2. Frontend calls `GET /public/gyms/gungun`.
 3. Backend returns gym name + city-derived line + UPI ID + display name
    + timings + address + phone (no member data).
 4. Page renders a static UPI QR (no amount), the address as a Google

@@ -21,7 +21,7 @@ const devLinks: Array<{ to: string; label: string }> = [
   { to: '/settings', label: '/settings' },
   { to: '/login', label: '/login' },
   { to: '/setup', label: '/setup' },
-  { to: '/g/sagarfitness', label: '/g/:slug' },
+  { to: '/g/gungun', label: '/g/:slug' },
 ];
 
 function DevNav() {

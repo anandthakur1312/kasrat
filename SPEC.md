@@ -1,4 +1,4 @@
-# Gym App — Project Specification
+# Kasrat — Project Specification
 
 **Single source of truth for this project.** Read this in full at the start of every coding session. When in doubt, this document wins over memory or assumptions.
 
@@ -84,9 +84,9 @@ Gym (one per owner for v1; schema allows multiple later)
 
   \- owner\_id → Owner
 
-  \- name                        e.g. "Sagar Fitness Club"
+  \- name                        e.g. "Gungun Fitness Club"
 
-  \- slug                        e.g. "sagarfitness", used in /g/:slug
+  \- slug                        e.g. "gungun", used in /g/:slug
 
   \- address                     multi-line text
 
@@ -613,7 +613,7 @@ The new member appears at the top of Overdue section with badge "Payment pending
 
 **Sections:**
 
-- **Identity:** Gym name input | Public URL (with `gymapp.in/g/` prefix). Slug edits trigger amber warning: "Changing this will invalidate any printed QR codes."  
+- **Identity:** Gym name input | Public URL (with `kasrat.in/g/` prefix). Slug edits trigger amber warning: "Changing this will invalidate any printed QR codes."  
 - **Public info:** Address textarea | Timings input (free text, supports split batches) | Contact phone input  
 - **Payments:** UPI ID input | Display name on QR input  
 - **Overdue:** Grace period (number input \+ "days" suffix)  
@@ -686,7 +686,7 @@ The new member appears at the top of Overdue section with badge "Payment pending
 **Contents:**
 
 - 1 Owner: "Anand Sharma" — [anand@example.com](mailto:anand@example.com)  
-- 1 Gym: "Sagar Fitness Club" — slug `sagarfitness`, UPI `sagargym@okaxis`, grace 5 days  
+- 1 Gym: "Gungun Fitness Club" — slug `gungun`, UPI `sagargym@okaxis`, grace 5 days  
 - 4 Plans: 1mo/3mo/6mo/12mo at ₹1000/₹2700/₹5000/₹9000, all active  
 - 3 Members covering all states:  
   - **Rajesh Kumar** — 3-month plan, expired 12 days ago \+ 5-day grace \= OVERDUE 7 days, ₹2,700 due, 4 historical payments  

@@ -52,13 +52,13 @@ const owner: Owner = {
 
 const gym: Gym = {
   id: 'gym-1',
-  name: 'Sagar Fitness Club',
-  slug: 'sagarfitness',
+  name: 'Gungun Fitness Club',
+  slug: 'gungun',
   address: '123 MG Road,\nSagar, Madhya Pradesh 470001',
   timings: 'Mon–Sat\nMorning: 6:00 AM – 10:00 AM\nEvening: 5:00 PM – 9:00 PM',
   contactPhone: '+91 98765 43210',
   upiId: 'sagargym@okaxis',
-  upiDisplayName: 'Sagar Fitness Club',
+  upiDisplayName: 'Gungun Fitness Club',
   gracePeriodDays: 5,
   createdAt: yearAgoIso,
 };
