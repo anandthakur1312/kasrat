@@ -200,6 +200,31 @@ app.post('/members', async (req) => {
   return toMember(member);
 });
 
+const updateMemberSchema = z.object({
+  name: z.string().min(1).optional(),
+  phone: z.string().min(1).optional(),
+});
+
+app.patch<{ Params: { id: string } }>('/members/:id', async (req) => {
+  const body = updateMemberSchema.parse(req.body);
+  const updated = await prisma.member.update({
+    where: { id: req.params.id },
+    data: {
+      ...(body.name !== undefined ? { name: body.name.trim() } : {}),
+      ...(body.phone !== undefined ? { phone: body.phone.trim() } : {}),
+    },
+  });
+  return toMember(updated);
+});
+
+app.delete<{ Params: { id: string } }>('/members/:id', async (req) => {
+  await prisma.member.update({
+    where: { id: req.params.id },
+    data: { isActive: false },
+  });
+  return { ok: true };
+});
+
 const recordPaymentSchema = z.object({
   memberId: z.string(),
   planId: z.string(),

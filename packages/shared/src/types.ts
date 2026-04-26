@@ -135,6 +135,11 @@ export interface CreateMemberRequest {
   startDate: string; // defaults to today on the frontend
 }
 
+export interface UpdateMemberRequest {
+  name?: string;
+  phone?: string;
+}
+
 export interface RecordPaymentRequest {
   memberId: string;
   planId: string;

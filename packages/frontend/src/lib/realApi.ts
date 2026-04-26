@@ -11,6 +11,7 @@ import type {
   PublicGymResponse,
   RecordPaymentRequest,
   UpdateGymRequest,
+  UpdateMemberRequest,
   UpdatePlanRequest,
 } from '@gym-app/shared/types';
 
@@ -33,6 +34,13 @@ export const realApi = {
   getMemberDetail: (id: string) => request<MemberDetailResponse>(`/members/${encodeURIComponent(id)}`),
   createMember: (req: CreateMemberRequest) =>
     request<Member>('/members', { method: 'POST', body: JSON.stringify(req) }),
+  updateMember: (id: string, req: UpdateMemberRequest) =>
+    request<Member>(`/members/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(req),
+    }),
+  deleteMember: (id: string) =>
+    request<{ ok: true }>(`/members/${encodeURIComponent(id)}`, { method: 'DELETE' }).then(() => undefined),
   recordPayment: (req: RecordPaymentRequest) =>
     request<Payment>('/payments', { method: 'POST', body: JSON.stringify(req) }),
   getPlans: () => request<Plan[]>('/plans'),

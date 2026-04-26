@@ -36,7 +36,23 @@
     "menu": {
       "plans": "Plans",
       "settings": "Settings",
-      "logout": "Logout"
+      "logout": "Logout",
+      "language": "Language"
+    },
+    "error": {
+      "title": "Couldn't load members",
+      "body": "Check your connection and try again.",
+      "retry": "Retry"
+    }
+  },
+  "edit": {
+    "title": "Edit member",
+    "name": "Name",
+    "phone": "Phone",
+    "save": "Save changes",
+    "toast": {
+      "saved": "Member updated",
+      "failed": "Could not update member"
     }
   },
   "detail": {
@@ -46,6 +62,15 @@
     "menu": {
       "edit": "Edit",
       "remove": "Remove"
+    },
+    "removeConfirm": {
+      "title": "Remove member?",
+      "body": "{{name}} will be archived and removed from the list. Their payment history is kept.",
+      "confirm": "Remove"
+    },
+    "toast": {
+      "removed": "Member removed",
+      "removeFailed": "Could not remove member"
     },
     "status": {
       "overdue": "OVERDUE",
@@ -138,6 +163,11 @@
     "upiDisplayName": "Display name on QR",
     "gracePeriod": "Grace period",
     "days": "days",
+    "slugConfirm": {
+      "title": "Change public URL?",
+      "body": "Members visiting gymapp.in/g/{{oldSlug}} will see Gym not found. Any printed QR codes pointing to the old URL will stop working. Continue?",
+      "confirm": "Yes, change it"
+    },
     "toast": {
       "saved": "Settings saved",
       "failed": "Could not save settings"

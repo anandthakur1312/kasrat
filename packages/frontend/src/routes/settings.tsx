@@ -5,6 +5,7 @@ import { ArrowLeft, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Gym } from '@gym-app/shared/types';
 import { api } from '@/lib/api';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 
 export default function SettingsRoute() {
   const { t } = useTranslation();
@@ -23,6 +24,7 @@ export default function SettingsRoute() {
   const [upiId, setUpiId] = useState('');
   const [upiDisplayName, setUpiDisplayName] = useState('');
   const [gracePeriodDays, setGracePeriodDays] = useState(3);
+  const [confirmSlugOpen, setConfirmSlugOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -45,8 +47,17 @@ export default function SettingsRoute() {
     };
   }, []);
 
+  async function handleSaveClick() {
+    if (slug !== originalSlug) {
+      setConfirmSlugOpen(true);
+      return;
+    }
+    await handleSave();
+  }
+
   async function handleSave() {
     if (!gym) return;
+    setConfirmSlugOpen(false);
     setSaving(true);
     try {
       const updated = await api.updateGym({
@@ -192,13 +203,25 @@ export default function SettingsRoute() {
       <div className="fixed bottom-0 inset-x-0 bg-background/95 backdrop-blur border-t border-border/60 px-4 py-3">
         <button
           type="button"
-          onClick={handleSave}
+          onClick={handleSaveClick}
           disabled={loading || saving}
           className="w-full h-11 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {saving ? t('common.loading') : t('settings.save')}
         </button>
       </div>
+
+      <ConfirmDialog
+        open={confirmSlugOpen}
+        title={t('settings.slugConfirm.title')}
+        body={t('settings.slugConfirm.body', { oldSlug: originalSlug, newSlug: slug })}
+        confirmLabel={t('settings.slugConfirm.confirm')}
+        cancelLabel={t('common.cancel')}
+        destructive
+        busy={saving}
+        onConfirm={handleSave}
+        onCancel={() => setConfirmSlugOpen(false)}
+      />
     </div>
   );
 }

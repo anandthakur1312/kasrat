@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Menu } from 'lucide-react';
 import type { MemberListItem, MembersListResponse } from '@gym-app/shared/types';
 import { api } from '@/lib/api';
 import { Avatar } from '@/components/avatar';
+import { LanguageToggle } from '@/components/language-toggle';
 import { cn } from '@/lib/utils';
 
 type Filter = 'all' | 'overdue' | 'expiring' | 'active';
@@ -15,24 +16,30 @@ export default function MembersListRoute() {
 
   const [data, setData] = useState<MembersListResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
 
   const [gymName, setGymName] = useState('');
 
-  useEffect(() => {
-    let cancelled = false;
-    void Promise.all([api.getMembersList(), api.getGym()]).then(([list, gym]) => {
-      if (cancelled) return;
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(false);
+    try {
+      const [list, gym] = await Promise.all([api.getMembersList(), api.getGym()]);
       setData(list);
       setGymName(gym.name);
+    } catch {
+      setError(true);
+    } finally {
       setLoading(false);
-    });
-    return () => {
-      cancelled = true;
-    };
+    }
   }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const filtered = useMemo(() => {
     if (!data) return [];
@@ -125,6 +132,18 @@ export default function MembersListRoute() {
       <div className="mt-2">
         {loading ? (
           <div className="px-4 py-8 text-sm text-muted-foreground">{t('common.loading')}</div>
+        ) : error ? (
+          <div className="px-4 py-12 text-center space-y-3">
+            <div className="text-sm text-overdue-text font-medium">{t('members.error.title')}</div>
+            <div className="text-xs text-muted-foreground">{t('members.error.body')}</div>
+            <button
+              type="button"
+              onClick={() => void load()}
+              className="inline-flex items-center h-9 px-4 rounded-md border border-border text-sm hover:bg-secondary"
+            >
+              {t('members.error.retry')}
+            </button>
+          </div>
         ) : filtered.length === 0 ? (
           <div className="px-4 py-12 text-center text-sm text-muted-foreground">
             {t('members.empty')}
@@ -300,13 +319,17 @@ function HamburgerMenu({
         <Menu className="h-5 w-5" />
       </button>
       {open && (
-        <div className="absolute right-0 top-10 z-10 min-w-[160px] rounded-md border border-border bg-popover shadow-md py-1">
+        <div className="absolute right-0 top-10 z-10 min-w-[180px] rounded-md border border-border bg-popover shadow-md py-1">
           <MenuItem to="/plans" onClick={onClose}>
             {t('members.menu.plans')}
           </MenuItem>
           <MenuItem to="/settings" onClick={onClose}>
             {t('members.menu.settings')}
           </MenuItem>
+          <div className="px-3 py-2 border-t border-border/60 mt-1 flex items-center justify-between gap-2">
+            <span className="text-xs text-muted-foreground">{t('members.menu.language')}</span>
+            <LanguageToggle />
+          </div>
           <MenuItem to="/login" onClick={onClose}>
             {t('members.menu.logout')}
           </MenuItem>

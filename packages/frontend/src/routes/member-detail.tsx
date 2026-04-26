@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, MoreHorizontal } from 'lucide-react';
+import { toast } from 'sonner';
 import type { MemberDetailResponse, PaymentMethod } from '@gym-app/shared/types';
 import { api } from '@/lib/api';
 import { Avatar } from '@/components/avatar';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
@@ -15,6 +17,8 @@ export default function MemberDetailRoute() {
   const [data, setData] = useState<MemberDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [removing, setRemoving] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -30,6 +34,20 @@ export default function MemberDetailRoute() {
     };
   }, [id]);
 
+  async function handleRemove() {
+    if (!id) return;
+    setRemoving(true);
+    try {
+      await api.deleteMember(id);
+      toast.success(t('detail.toast.removed'));
+      navigate('/');
+    } catch {
+      toast.error(t('detail.toast.removeFailed'));
+      setRemoving(false);
+      setConfirmRemove(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background pb-24">
       <header className="flex items-center justify-between border-b border-border/60 px-2 py-2">
@@ -42,7 +60,19 @@ export default function MemberDetailRoute() {
           <ArrowLeft className="h-5 w-5" />
         </button>
         <h1 className="text-[15px] font-medium">{t('detail.title')}</h1>
-        <DetailMenu open={menuOpen} onToggle={() => setMenuOpen((v) => !v)} onClose={() => setMenuOpen(false)} />
+        <DetailMenu
+          open={menuOpen}
+          onToggle={() => setMenuOpen((v) => !v)}
+          onClose={() => setMenuOpen(false)}
+          onEdit={() => {
+            setMenuOpen(false);
+            navigate(`/members/${id}/edit`);
+          }}
+          onRemove={() => {
+            setMenuOpen(false);
+            setConfirmRemove(true);
+          }}
+        />
       </header>
 
       {loading || !data ? (
@@ -50,6 +80,18 @@ export default function MemberDetailRoute() {
       ) : (
         <DetailBody data={data} onRecordPayment={() => navigate(`/members/${id}/pay`)} />
       )}
+
+      <ConfirmDialog
+        open={confirmRemove}
+        title={t('detail.removeConfirm.title')}
+        body={t('detail.removeConfirm.body', { name: data?.member.name ?? '' })}
+        confirmLabel={t('detail.removeConfirm.confirm')}
+        cancelLabel={t('common.cancel')}
+        destructive
+        busy={removing}
+        onConfirm={handleRemove}
+        onCancel={() => setConfirmRemove(false)}
+      />
     </div>
   );
 }
@@ -58,10 +100,14 @@ function DetailMenu({
   open,
   onToggle,
   onClose,
+  onEdit,
+  onRemove,
 }: {
   open: boolean;
   onToggle: () => void;
   onClose: () => void;
+  onEdit: () => void;
+  onRemove: () => void;
 }) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
@@ -87,10 +133,18 @@ function DetailMenu({
       </button>
       {open && (
         <div className="absolute right-0 top-10 z-10 min-w-[140px] rounded-md border border-border bg-popover shadow-md py-1">
-          <button className="w-full text-left px-3 py-2 text-sm hover:bg-secondary">
+          <button
+            type="button"
+            onClick={onEdit}
+            className="w-full text-left px-3 py-2 text-sm hover:bg-secondary"
+          >
             {t('detail.menu.edit')}
           </button>
-          <button className="w-full text-left px-3 py-2 text-sm text-overdue-text hover:bg-overdue-bg">
+          <button
+            type="button"
+            onClick={onRemove}
+            className="w-full text-left px-3 py-2 text-sm text-overdue-text hover:bg-overdue-bg"
+          >
             {t('detail.menu.remove')}
           </button>
         </div>
@@ -152,7 +206,10 @@ function DetailBody({
             {t('detail.history.title')}
           </h2>
           {showViewAll && (
-            <Link to="#" className="text-xs text-foreground underline-offset-2 hover:underline">
+            <Link
+              to={`/members/${data.member.id}/payments`}
+              className="text-xs text-foreground underline-offset-2 hover:underline"
+            >
               {t('detail.history.viewAll')}
             </Link>
           )}

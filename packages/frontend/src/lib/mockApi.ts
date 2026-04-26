@@ -4,6 +4,7 @@ import type {
   CreatePlanRequest,
   Gym,
   Member,
+  UpdateMemberRequest,
   MemberDetailResponse,
   MemberListItem,
   MemberStatus,
@@ -257,6 +258,20 @@ export const mockApi = {
     mockState.memberships.push(membership);
 
     return member;
+  },
+
+  async updateMember(id: string, req: UpdateMemberRequest): Promise<Member> {
+    await delay();
+    const member = findMember(id);
+    if (req.name !== undefined) member.name = req.name.trim();
+    if (req.phone !== undefined) member.phone = req.phone.trim();
+    return { ...member };
+  },
+
+  async deleteMember(id: string): Promise<void> {
+    await delay();
+    const member = findMember(id);
+    member.isActive = false;
   },
 
   async recordPayment(req: RecordPaymentRequest): Promise<Payment> {

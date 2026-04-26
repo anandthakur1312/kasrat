@@ -4,6 +4,8 @@ import MembersListRoute from '@/routes/members-list';
 import MemberDetailRoute from '@/routes/member-detail';
 import RecordPaymentRoute from '@/routes/record-payment';
 import AddMemberRoute from '@/routes/add-member';
+import EditMemberRoute from '@/routes/edit-member';
+import PaymentHistoryRoute from '@/routes/payment-history';
 import PlansRoute from '@/routes/plans';
 import SettingsRoute from '@/routes/settings';
 import AuthRoute from '@/routes/auth';
@@ -49,7 +51,9 @@ export default function App() {
         <Route path="/setup" element={<SetupRoute />} />
         <Route path="/members/new" element={<AddMemberRoute />} />
         <Route path="/members/:id" element={<MemberDetailRoute />} />
+        <Route path="/members/:id/edit" element={<EditMemberRoute />} />
         <Route path="/members/:id/pay" element={<RecordPaymentRoute />} />
+        <Route path="/members/:id/payments" element={<PaymentHistoryRoute />} />
         <Route path="/plans" element={<PlansRoute />} />
         <Route path="/settings" element={<SettingsRoute />} />
         <Route path="/g/:slug" element={<PublicGymRoute />} />
