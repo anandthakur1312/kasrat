@@ -392,8 +392,15 @@ app.post('/gyms', async (req) => {
   const existing = await prisma.gym.findFirst();
   let owner = await prisma.owner.findFirst();
   if (!owner) {
+    // Phase 2 will replace this with the authenticated Clerk user.
+    const id = newId('owner');
     owner = await prisma.owner.create({
-      data: { id: newId('owner'), name: 'Owner', email: `owner-${Date.now()}@local` },
+      data: {
+        id,
+        clerkUserId: `placeholder_${id}`,
+        name: 'Owner',
+        email: `owner-${Date.now()}@local`,
+      },
     });
   }
   let gymId = existing?.id;

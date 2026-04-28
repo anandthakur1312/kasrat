@@ -6,8 +6,9 @@ export type MemberStatus = 'overdue' | 'expiring' | 'active' | 'payment_pending'
 
 export interface Owner {
   id: string;
+  clerkUserId: string;
   name: string;
-  email: string | null;
+  email: string;
   phone: string | null;
   createdAt: string; // ISO 8601
 }

@@ -1,0 +1,7 @@
+# One absolute path per line.
+# Blank lines and lines beginning with # are ignored.
+#
+# Example:
+# /Applications/iMovie.app
+# /Users/anand.thakur1312/Library/Caches/com.openai.atlas
+

@@ -11,11 +11,13 @@ datasource db {
 }
 
 model Owner {
-  id        String   @id
-  email     String   @unique
-  name      String
-  createdAt DateTime @default(now())
-  gyms      Gym[]
+  id           String   @id
+  clerkUserId  String   @unique
+  email        String   @unique
+  name         String
+  phone        String?
+  createdAt    DateTime @default(now())
+  gyms         Gym[]
 }
 
 model Gym {

@@ -14,7 +14,12 @@ async function main() {
   const TODAY = todayLocal();
 
   const owner = await prisma.owner.create({
-    data: { id: 'owner-1', name: 'Anand Sharma', email: 'anand@example.com' },
+    data: {
+      id: 'owner-1',
+      clerkUserId: 'seed_user_anand',
+      name: 'Anand Sharma',
+      email: 'anand@example.com',
+    },
   });
 
   const gym = await prisma.gym.create({

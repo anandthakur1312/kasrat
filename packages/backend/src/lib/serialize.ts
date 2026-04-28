@@ -6,12 +6,20 @@ function asISO(d: DbDate): string {
   return d instanceof Date ? d.toISOString() : d;
 }
 
-export function toOwner(row: { id: string; name: string; email: string; createdAt: DbDate }): Owner {
+export function toOwner(row: {
+  id: string;
+  clerkUserId: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  createdAt: DbDate;
+}): Owner {
   return {
     id: row.id,
+    clerkUserId: row.clerkUserId,
     name: row.name,
     email: row.email,
-    phone: null,
+    phone: row.phone,
     createdAt: asISO(row.createdAt),
   };
 }
