@@ -23,7 +23,6 @@ A bilingual (English/Hindi) responsive web app for tiny Indian gym owners (50–
 - Reports beyond what's visible on existing screens  
 - Member profile fields beyond name \+ phone  
 - Phone \+ OTP login (deferred to v1.1)  
-- Email verification, password reset  
 - Payment gateway integration (Razorpay/Cashfree)  
 - Pricing / paid tiers — fully free during pilot
 
@@ -38,7 +37,7 @@ A bilingual (English/Hindi) responsive web app for tiny Indian gym owners (50–
 | i18n | react-i18next (set up from day 1\) |
 | Backend | Node.js \+ TypeScript \+ Fastify \+ Prisma |
 | Database | Postgres on Neon (serverless, scales to zero) |
-| Auth | Lucia or Auth.js — Google OAuth (primary) \+ email/password (fallback) |
+| Auth | Clerk (managed) — Google OAuth (primary) \+ Email/Password (fallback) |
 | Compute | AWS Lambda \+ API Gateway via SST |
 | Frontend hosting | Cloudflare Pages |
 | File storage | S3 (ap-south-1) — for v2 photos/videos |
@@ -52,7 +51,7 @@ A bilingual (English/Hindi) responsive web app for tiny Indian gym owners (50–
 
 ## 3\. Build phases (current status)
 
-✅ Phase 1: Product definition ✅ Phase 2: Critical flow decisions ✅ Phase 3: Data model ✅ Phase 4: Tech stack ✅ Phase 5: UI wireframes (all 8 screens) 🔵 **Phase 6: UI build with mocked data ← we are here** ⬜ Phase 7: Backend foundation \+ API spine ⬜ Phase 8: Wire UI to real APIs ⬜ Phase 9: Pre-launch pilot at family's gym in Sagar
+✅ Phase 1: Product definition ✅ Phase 2: Critical flow decisions ✅ Phase 3: Data model ✅ Phase 4: Tech stack ✅ Phase 5: UI wireframes (all 8 screens) ✅ Phase 6: UI build with mocked data ✅ Phase 7: Backend foundation \+ API spine ✅ Phase 8: Wire UI to real APIs 🔵 **Phase 8.5: Real auth (Clerk) \+ multi-tenancy ← we are here** ⬜ Phase 9: Pre-launch pilot at family's gym in Sagar
 
 **The plan:** build the entire UI against a mock API layer first. The mock layer obeys TypeScript types derived from the real schema, so when the backend is built later, the real API conforms to the same contract. Zero shape drift.
 
@@ -68,15 +67,17 @@ Owner (the person who logs in)
 
   \- id
 
-  \- email, password\_hash (nullable if Google sign-in)
+  \- clerk\_user\_id           UNIQUE; foreign key to Clerk's user record
 
-  \- google\_id (nullable if email/password)
+  \- email                   UNIQUE; mirrored from Clerk for migration safety
 
-  \- phone (nullable, for v1.1 OTP)
+  \- name                    mirrored from Clerk on JIT creation
 
-  \- name
+  \- phone                   nullable, for v1.1 OTP
 
   \- created\_at
+
+  Note: password hashes, OAuth tokens, MFA secrets, and sessions are managed entirely by Clerk. The DB stores only the minimal reference fields needed by business logic. Migrating to a different auth provider in the future is a one-column swap on this table — every foreign key elsewhere (`Gym.ownerId`, `Payment.recordedBy`, etc.) keeps working unchanged.
 
 Gym (one per owner for v1; schema allows multiple later)
 
@@ -842,8 +843,12 @@ Each screen, when built, should be fully functional against the mock API — cli
 
 - **Web app, not native.** Faster to ship, no app store, mobile-friendly via responsive design.  
 - **Members never log in.** Public page via QR. Halves the scope of auth, avoids dual app builds.  
-- **No email verification, no password reset in v1.** Family pilot scope. Add SES \+ flows in v1.1.  
-- **Google OAuth as primary auth.** Owners have Gmail; one-tap; auto-handles email "verification."  
+- **Clerk over Lucia/Auth.js for auth.** Lucia v3 was deprecated to a "learning resource" by its maintainer (Mar 2025); Auth.js feels grafted-on for non-Next backends. Clerk gives 10k MAU free tier, SOC 2 Type II, modern React components that render cleanly at 375px, built-in Hindi i18n, and 5-min setup. Vendor lock-in is mitigated by keeping Owner records in our Postgres so business data stays portable.  
+- **Google OAuth (primary) \+ Email/Password (fallback).** Both enabled in Clerk on day 1\. Phone OTP, magic links, and MFA deferred to v1.1 — all are one-toggle adds in Clerk's dashboard, no code change needed. Email verification and password reset are handled automatically by Clerk.  
+- **JIT (just-in-time) user sync over webhook.** Owner row is lazy-created on first authenticated request. No webhook endpoint to expose, no svix signatures, no race conditions, self-healing. Since owners edit gym info in our settings UI (not Clerk's), there's nothing to sync after the initial create.  
+- **Helper-function multi-tenancy, not Prisma extensions or RLS.** `getOwnerGym(req)` returns the authenticated owner's gym; every protected route filters by `gym.id` explicitly. Visible filters \> magic. ID-based lookups use `findFirst({ id, gymId })` to prevent cross-tenant leaks. Postgres RLS deferred until production migration to Neon (SQLite doesn't support it).  
+- **DB lookup per request, not custom JWT claim.** Backend looks up Owner by `clerk_user_id` on every request (\~1ms indexed query). A custom JWT claim would skip the lookup but introduces stale-claim risk (a soft-deleted owner could keep working until JWT expires) and bootstrap complexity (the first request after signup can't carry the claim yet). Trade 1ms for security freshness.  
+- **`Owner.id` decoupled from `clerk_user_id`.** Internal IDs use the existing `owner-xxx` format; `clerk_user_id` is a separate UNIQUE column. If we ever migrate from Clerk to Auth0/Supabase/etc., only the `clerk_user_id` column changes — every other foreign key stays valid.  
 - **Plan-based memberships, not open-ended.** Cleaner data model, automatic overdue detection.  
 - **Per-plan pricing.** No discount engine — owner just sets price per plan. Edit `amount_due` on individual memberships if a discount is needed for one member.  
 - **No partial payments.** One Payment row per renewal, full amount.  
