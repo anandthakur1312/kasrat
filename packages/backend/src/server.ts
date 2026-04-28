@@ -11,6 +11,7 @@ import { prisma } from './db.js';
 import { addDays, addMonths, iso, parseDate, todayLocal } from './lib/dates.js';
 import { newId } from './lib/ids.js';
 import { computeStatus } from './lib/status.js';
+import { clerkAuth, getAuthenticatedOwner, getOwnerGym } from './lib/auth.js';
 import {
   toGym,
   toMember,
@@ -20,12 +21,6 @@ import {
 } from './lib/serialize.js';
 
 const PORT = Number(process.env.PORT ?? 3001);
-
-async function getSingleGym() {
-  const gym = await prisma.gym.findFirst();
-  if (!gym) throw Object.assign(new Error('No gym configured'), { statusCode: 404 });
-  return gym;
-}
 
 async function buildListItem(memberId: string, gracePeriodDays: number): Promise<MemberListItem> {
   const today = iso(todayLocal());
@@ -86,14 +81,23 @@ await app.register(cors, { origin: true });
 
 app.setErrorHandler((err, _req, reply) => {
   const status = (err as { statusCode?: number }).statusCode ?? 500;
-  reply.code(status).send({ error: err.message });
+  const code = (err as { code?: string }).code;
+  reply.code(status).send({ error: err.message, ...(code ? { code } : {}) });
+});
+
+// Public endpoints (no Clerk auth required).
+const PUBLIC_PREFIXES = ['/health', '/public/'];
+app.addHook('preHandler', async (req) => {
+  const path = req.url.split('?')[0] ?? '';
+  if (PUBLIC_PREFIXES.some((p) => path === p || path.startsWith(p))) return;
+  await clerkAuth(req);
 });
 
 app.get('/health', async () => ({ ok: true }));
 
 // ---- members ----
-app.get('/members', async (): Promise<MembersListResponse> => {
-  const gym = await getSingleGym();
+app.get('/members', async (req): Promise<MembersListResponse> => {
+  const { gym } = await getOwnerGym(req);
   const members = await prisma.member.findMany({ where: { gymId: gym.id, isActive: true } });
   const items = await Promise.all(members.map((m) => buildListItem(m.id, gym.gracePeriodDays)));
   const sorted = sortListItems(items);
@@ -109,9 +113,11 @@ app.get('/members', async (): Promise<MembersListResponse> => {
 });
 
 app.get<{ Params: { id: string } }>('/members/:id', async (req): Promise<MemberDetailResponse> => {
-  const gym = await getSingleGym();
+  const { gym } = await getOwnerGym(req);
   const today = iso(todayLocal());
-  const member = await prisma.member.findUnique({ where: { id: req.params.id } });
+  const member = await prisma.member.findFirst({
+    where: { id: req.params.id, gymId: gym.id },
+  });
   if (!member) throw Object.assign(new Error('Member not found'), { statusCode: 404 });
 
   const memberships = await prisma.membership.findMany({
@@ -169,8 +175,8 @@ const createMemberSchema = z.object({
 
 app.post('/members', async (req) => {
   const body = createMemberSchema.parse(req.body);
-  const gym = await getSingleGym();
-  const plan = await prisma.plan.findUnique({ where: { id: body.planId } });
+  const { gym } = await getOwnerGym(req);
+  const plan = await prisma.plan.findFirst({ where: { id: body.planId, gymId: gym.id } });
   if (!plan) throw Object.assign(new Error('Plan not found'), { statusCode: 404 });
 
   const member = await prisma.member.create({
@@ -207,8 +213,13 @@ const updateMemberSchema = z.object({
 
 app.patch<{ Params: { id: string } }>('/members/:id', async (req) => {
   const body = updateMemberSchema.parse(req.body);
+  const { gym } = await getOwnerGym(req);
+  const existing = await prisma.member.findFirst({
+    where: { id: req.params.id, gymId: gym.id },
+  });
+  if (!existing) throw Object.assign(new Error('Member not found'), { statusCode: 404 });
   const updated = await prisma.member.update({
-    where: { id: req.params.id },
+    where: { id: existing.id },
     data: {
       ...(body.name !== undefined ? { name: body.name.trim() } : {}),
       ...(body.phone !== undefined ? { phone: body.phone.trim() } : {}),
@@ -218,8 +229,13 @@ app.patch<{ Params: { id: string } }>('/members/:id', async (req) => {
 });
 
 app.delete<{ Params: { id: string } }>('/members/:id', async (req) => {
+  const { gym } = await getOwnerGym(req);
+  const existing = await prisma.member.findFirst({
+    where: { id: req.params.id, gymId: gym.id },
+  });
+  if (!existing) throw Object.assign(new Error('Member not found'), { statusCode: 404 });
   await prisma.member.update({
-    where: { id: req.params.id },
+    where: { id: existing.id },
     data: { isActive: false },
   });
   return { ok: true };
@@ -235,11 +251,13 @@ const recordPaymentSchema = z.object({
 
 app.post('/payments', async (req) => {
   const body = recordPaymentSchema.parse(req.body);
-  const gym = await getSingleGym();
+  const { owner, gym } = await getOwnerGym(req);
   const today = iso(todayLocal());
-  const plan = await prisma.plan.findUnique({ where: { id: body.planId } });
+  const plan = await prisma.plan.findFirst({ where: { id: body.planId, gymId: gym.id } });
   if (!plan) throw Object.assign(new Error('Plan not found'), { statusCode: 404 });
-  const member = await prisma.member.findUnique({ where: { id: body.memberId } });
+  const member = await prisma.member.findFirst({
+    where: { id: body.memberId, gymId: gym.id },
+  });
   if (!member) throw Object.assign(new Error('Member not found'), { statusCode: 404 });
 
   const memberships = await prisma.membership.findMany({
@@ -293,7 +311,6 @@ app.post('/payments', async (req) => {
     membershipId = m.id;
   }
 
-  const owner = await prisma.owner.findFirst({ where: { id: gym.ownerId } });
   const payment = await prisma.payment.create({
     data: {
       id: newId('payment'),
@@ -302,16 +319,16 @@ app.post('/payments', async (req) => {
       method: body.method,
       paidOn: body.paidOn,
       referenceNote: body.method === 'upi' ? `GYM-MEM-${member.id}` : '',
-      recordedBy: owner?.id ?? '',
-      recordedByName: owner?.name ?? '',
+      recordedBy: owner.id,
+      recordedByName: owner.name,
     },
   });
   return toPayment(payment);
 });
 
 // ---- plans ----
-app.get('/plans', async () => {
-  const gym = await getSingleGym();
+app.get('/plans', async (req) => {
+  const { gym } = await getOwnerGym(req);
   return plansWithCount(gym.id);
 });
 
@@ -323,7 +340,7 @@ const createPlanSchema = z.object({
 
 app.post('/plans', async (req) => {
   const body = createPlanSchema.parse(req.body);
-  const gym = await getSingleGym();
+  const { gym } = await getOwnerGym(req);
   const plan = await prisma.plan.create({
     data: {
       id: newId('plan'),
@@ -345,19 +362,25 @@ const updatePlanSchema = z.object({
 
 app.patch<{ Params: { id: string } }>('/plans/:id', async (req) => {
   const body = updatePlanSchema.parse(req.body);
-  const updated = await prisma.plan.update({ where: { id: req.params.id }, data: body });
-  const gym = await getSingleGym();
+  const { gym } = await getOwnerGym(req);
+  const existing = await prisma.plan.findFirst({
+    where: { id: req.params.id, gymId: gym.id },
+  });
+  if (!existing) throw Object.assign(new Error('Plan not found'), { statusCode: 404 });
+  const updated = await prisma.plan.update({ where: { id: existing.id }, data: body });
   const today = iso(todayLocal());
   const ms = await prisma.membership.findMany({
     where: { planId: updated.id, startDate: { lte: today }, endDate: { gt: today } },
     select: { memberId: true },
   });
-  void gym;
   return { ...toPlan(updated), memberCount: new Set(ms.map((m) => m.memberId)).size };
 });
 
 // ---- gym ----
-app.get('/gym', async () => toGym(await getSingleGym()));
+app.get('/gym', async (req) => {
+  const { gym } = await getOwnerGym(req);
+  return toGym(gym);
+});
 
 const updateGymSchema = z.object({
   name: z.string().optional(),
@@ -372,7 +395,7 @@ const updateGymSchema = z.object({
 
 app.patch('/gym', async (req) => {
   const body = updateGymSchema.parse(req.body);
-  const gym = await getSingleGym();
+  const { gym } = await getOwnerGym(req);
   const updated = await prisma.gym.update({ where: { id: gym.id }, data: body });
   return toGym(updated);
 });
@@ -387,22 +410,11 @@ const createGymSchema = z.object({
   plans: z.array(z.object({ durationMonths: z.number().int().positive(), price: z.number().int().nonnegative() })),
 });
 
+// First-time setup: authenticated owner creates (or replaces) their own gym.
 app.post('/gyms', async (req) => {
   const body = createGymSchema.parse(req.body);
-  const existing = await prisma.gym.findFirst();
-  let owner = await prisma.owner.findFirst();
-  if (!owner) {
-    // Phase 2 will replace this with the authenticated Clerk user.
-    const id = newId('owner');
-    owner = await prisma.owner.create({
-      data: {
-        id,
-        clerkUserId: `placeholder_${id}`,
-        name: 'Owner',
-        email: `owner-${Date.now()}@local`,
-      },
-    });
-  }
+  const owner = await getAuthenticatedOwner(req);
+  const existing = await prisma.gym.findFirst({ where: { ownerId: owner.id } });
   let gymId = existing?.id;
   if (existing) {
     await prisma.gym.update({
@@ -450,7 +462,7 @@ app.post('/gyms', async (req) => {
   return toGym((await prisma.gym.findUnique({ where: { id: gymId! } }))!);
 });
 
-// ---- public gym page ----
+// ---- public gym page (no auth) ----
 app.get<{ Params: { slug: string } }>('/public/gyms/:slug', async (req): Promise<PublicGymResponse> => {
   const gym = await prisma.gym.findUnique({ where: { slug: req.params.slug } });
   if (!gym) throw Object.assign(new Error('Gym not found'), { statusCode: 404 });
