@@ -12,8 +12,6 @@ A bilingual (English/Hindi) responsive web app for tiny Indian gym owners (50–
 
 **Mobile-first.** Owner uses this on a phone at the front desk; designed for \~375px width, scales up for desktop.
 
-**Cost philosophy:** scale-to-zero where possible, \~₹67/month total at pilot scale (essentially just the domain).
-
 **Out of scope for v1:**
 
 - Photos/videos of the gym  
