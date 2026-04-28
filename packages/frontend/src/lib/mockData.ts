@@ -44,6 +44,7 @@ const yearAgoIso = isoDateTime(addDays(TODAY, -380));
 
 const owner: Owner = {
   id: 'owner-1',
+  clerkUserId: 'mock_user_anand',
   name: 'Anand Sharma',
   email: 'anand@example.com',
   phone: null,

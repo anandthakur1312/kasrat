@@ -43,3 +43,7 @@ pnpm-debug.log*
 
 # Workspace tools (not part of Kasrat)
 mac-cleanup-review/
+
+# SST (Pulumi state, generated platform files)
+.sst/
+.open-next/
