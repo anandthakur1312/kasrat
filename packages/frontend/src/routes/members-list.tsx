@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useClerk } from '@clerk/react';
 import { Menu } from 'lucide-react';
 import type { MemberListItem, MembersListResponse } from '@gym-app/shared/types';
 import { api } from '@/lib/api';
@@ -297,6 +298,7 @@ function HamburgerMenu({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+  const { signOut } = useClerk();
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -330,9 +332,16 @@ function HamburgerMenu({
             <span className="text-xs text-muted-foreground">{t('members.menu.language')}</span>
             <LanguageToggle />
           </div>
-          <MenuItem to="/login" onClick={onClose}>
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              void signOut({ redirectUrl: '/sign-in' });
+            }}
+            className="w-full text-left block px-3 py-2 text-sm hover:bg-secondary"
+          >
             {t('members.menu.logout')}
-          </MenuItem>
+          </button>
         </div>
       )}
     </div>

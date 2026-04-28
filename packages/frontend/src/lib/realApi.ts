@@ -17,14 +17,54 @@ import type {
 
 const BASE_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:3001';
 
+// Public payment page (`/public/gyms/:slug`) doesn't need a token.
+const PUBLIC_PREFIXES = ['/public/'];
+
+// Wired up at app boot from a hook (`useAuth().getToken`) — see
+// components/clerk-token-bridge.tsx. Until then, requests fall back to
+// no-auth (which only works for /public/* and /health).
+let getTokenFn: (() => Promise<string | null>) | null = null;
+
+export function setTokenGetter(fn: () => Promise<string | null>) {
+  getTokenFn = fn;
+}
+
+export class ApiError extends Error {
+  status: number;
+  code?: string;
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.code = code;
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const isPublic = PUBLIC_PREFIXES.some((p) => path.startsWith(p));
+  const token = !isPublic && getTokenFn ? await getTokenFn() : null;
+
   const res = await fetch(`${BASE_URL}${path}`, {
     ...init,
-    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(init?.headers ?? {}),
+    },
   });
+
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`${res.status} ${res.statusText}${text ? `: ${text}` : ''}`);
+    let body: { error?: string; code?: string } = {};
+    try {
+      body = await res.json();
+    } catch {
+      // not JSON — keep body empty
+    }
+    throw new ApiError(
+      body.error ?? `${res.status} ${res.statusText}`,
+      res.status,
+      body.code,
+    );
   }
   return res.json() as Promise<T>;
 }

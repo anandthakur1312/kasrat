@@ -1,4 +1,4 @@
-import { BrowserRouter, Link, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Link, Navigate, Route, Routes } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import MembersListRoute from '@/routes/members-list';
 import MemberDetailRoute from '@/routes/member-detail';
@@ -8,9 +8,11 @@ import EditMemberRoute from '@/routes/edit-member';
 import PaymentHistoryRoute from '@/routes/payment-history';
 import PlansRoute from '@/routes/plans';
 import SettingsRoute from '@/routes/settings';
-import AuthRoute from '@/routes/auth';
+import { SignInRoute, SignUpRoute } from '@/routes/auth';
 import SetupRoute from '@/routes/setup';
 import PublicGymRoute from '@/routes/public-gym';
+import { ClerkTokenBridge } from '@/components/clerk-token-bridge';
+import { RequireAuth } from '@/components/require-auth';
 
 const devLinks: Array<{ to: string; label: string }> = [
   { to: '/', label: '/ (members list)' },
@@ -19,7 +21,8 @@ const devLinks: Array<{ to: string; label: string }> = [
   { to: '/members/new', label: '/members/new' },
   { to: '/plans', label: '/plans' },
   { to: '/settings', label: '/settings' },
-  { to: '/login', label: '/login' },
+  { to: '/sign-in', label: '/sign-in' },
+  { to: '/sign-up', label: '/sign-up' },
   { to: '/setup', label: '/setup' },
   { to: '/g/gungun', label: '/g/:slug' },
 ];
@@ -43,20 +46,27 @@ function DevNav() {
 export default function App() {
   return (
     <BrowserRouter>
+      <ClerkTokenBridge />
       <DevNav />
       <Toaster position="bottom-center" />
       <Routes>
-        <Route path="/" element={<MembersListRoute />} />
-        <Route path="/login" element={<AuthRoute />} />
-        <Route path="/setup" element={<SetupRoute />} />
-        <Route path="/members/new" element={<AddMemberRoute />} />
-        <Route path="/members/:id" element={<MemberDetailRoute />} />
-        <Route path="/members/:id/edit" element={<EditMemberRoute />} />
-        <Route path="/members/:id/pay" element={<RecordPaymentRoute />} />
-        <Route path="/members/:id/payments" element={<PaymentHistoryRoute />} />
-        <Route path="/plans" element={<PlansRoute />} />
-        <Route path="/settings" element={<SettingsRoute />} />
+        {/* Public — no auth required */}
+        <Route path="/sign-in/*" element={<SignInRoute />} />
+        <Route path="/sign-up/*" element={<SignUpRoute />} />
         <Route path="/g/:slug" element={<PublicGymRoute />} />
+        {/* Backwards-compat: old /login links land on the new sign-in URL */}
+        <Route path="/login" element={<Navigate to="/sign-in" replace />} />
+
+        {/* Protected — Clerk session required */}
+        <Route path="/" element={<RequireAuth><MembersListRoute /></RequireAuth>} />
+        <Route path="/setup" element={<RequireAuth><SetupRoute /></RequireAuth>} />
+        <Route path="/members/new" element={<RequireAuth><AddMemberRoute /></RequireAuth>} />
+        <Route path="/members/:id" element={<RequireAuth><MemberDetailRoute /></RequireAuth>} />
+        <Route path="/members/:id/edit" element={<RequireAuth><EditMemberRoute /></RequireAuth>} />
+        <Route path="/members/:id/pay" element={<RequireAuth><RecordPaymentRoute /></RequireAuth>} />
+        <Route path="/members/:id/payments" element={<RequireAuth><PaymentHistoryRoute /></RequireAuth>} />
+        <Route path="/plans" element={<RequireAuth><PlansRoute /></RequireAuth>} />
+        <Route path="/settings" element={<RequireAuth><SettingsRoute /></RequireAuth>} />
       </Routes>
     </BrowserRouter>
   );
