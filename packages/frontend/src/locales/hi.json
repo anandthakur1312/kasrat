@@ -131,10 +131,17 @@
     "title": "सेटिंग्स",
     "save": "बदलाव सहेजें",
     "section": {
+      "appearance": "रूप",
       "identity": "पहचान",
       "publicInfo": "सार्वजनिक जानकारी",
       "payments": "भुगतान",
       "overdue": "बकाया"
+    },
+    "theme": {
+      "fresh": "फ्रेश",
+      "classic": "क्लासिक",
+      "graphite": "ग्रेफाइट",
+      "ember": "एम्बर"
     },
     "gymName": "जिम का नाम",
     "publicUrl": "सार्वजनिक URL",

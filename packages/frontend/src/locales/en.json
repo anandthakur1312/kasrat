@@ -147,10 +147,17 @@
     "title": "Settings",
     "save": "Save changes",
     "section": {
+      "appearance": "Appearance",
       "identity": "Identity",
       "publicInfo": "Public info",
       "payments": "Payments",
       "overdue": "Overdue"
+    },
+    "theme": {
+      "fresh": "Fresh",
+      "classic": "Classic",
+      "graphite": "Graphite",
+      "ember": "Ember"
     },
     "gymName": "Gym name",
     "publicUrl": "Public URL",

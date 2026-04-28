@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ClerkProvider } from '@clerk/react';
 import '@/lib/i18n';
+import { applyStoredTheme } from '@/lib/theme';
 import App from './App';
 import './index.css';
 
@@ -14,6 +15,8 @@ if (!PUBLISHABLE_KEY) {
     'Missing VITE_CLERK_PUBLISHABLE_KEY. Copy packages/frontend/.env.example to .env and set the value from your Clerk dashboard.',
   );
 }
+
+applyStoredTheme();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

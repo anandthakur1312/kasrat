@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Check, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Gym } from '@gym-app/shared/types';
 import { api } from '@/lib/api';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { cn } from '@/lib/utils';
+import { getStoredTheme, saveTheme, themeOptions, type ThemeId } from '@/lib/theme';
 
 export default function SettingsRoute() {
   const { t } = useTranslation();
@@ -24,6 +26,7 @@ export default function SettingsRoute() {
   const [upiId, setUpiId] = useState('');
   const [upiDisplayName, setUpiDisplayName] = useState('');
   const [gracePeriodDays, setGracePeriodDays] = useState(3);
+  const [theme, setTheme] = useState<ThemeId>(() => getStoredTheme());
   const [confirmSlugOpen, setConfirmSlugOpen] = useState(false);
 
   useEffect(() => {
@@ -80,6 +83,11 @@ export default function SettingsRoute() {
     }
   }
 
+  function handleThemeChange(nextTheme: ThemeId) {
+    setTheme(nextTheme);
+    saveTheme(nextTheme);
+  }
+
   const slugChanged = slug !== originalSlug;
 
   return (
@@ -100,6 +108,20 @@ export default function SettingsRoute() {
         <div className="px-4 py-8 text-sm text-muted-foreground">{t('common.loading')}</div>
       ) : (
         <div className="px-4 py-4 space-y-6">
+          <Section title={t('settings.section.appearance')}>
+            <div className="grid grid-cols-2 gap-2">
+              {themeOptions.map((option) => (
+                <ThemeCard
+                  key={option.id}
+                  name={t(option.nameKey)}
+                  swatches={option.swatches}
+                  selected={theme === option.id}
+                  onClick={() => handleThemeChange(option.id)}
+                />
+              ))}
+            </div>
+          </Section>
+
           <Section title={t('settings.section.identity')}>
             <Field label={t('settings.gymName')}>
               <input
@@ -223,6 +245,51 @@ export default function SettingsRoute() {
         onCancel={() => setConfirmSlugOpen(false)}
       />
     </div>
+  );
+}
+
+function ThemeCard({
+  name,
+  swatches,
+  selected,
+  onClick,
+}: {
+  name: string;
+  swatches: [string, string, string];
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={onClick}
+      className={cn(
+        'rounded-md border p-3 text-left transition-colors bg-card hover:bg-secondary/70',
+        selected ? 'border-primary ring-2 ring-primary/20' : 'border-border',
+      )}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-sm font-medium">{name}</div>
+        <span
+          className={cn(
+            'h-5 w-5 rounded-full border inline-flex items-center justify-center',
+            selected ? 'border-primary bg-primary text-primary-foreground' : 'border-border',
+          )}
+        >
+          {selected && <Check className="h-3.5 w-3.5" />}
+        </span>
+      </div>
+      <div className="mt-3 grid grid-cols-3 gap-1.5">
+        {swatches.map((swatch) => (
+          <span
+            key={swatch}
+            className="h-6 rounded-sm border border-black/10"
+            style={{ backgroundColor: swatch }}
+          />
+        ))}
+      </div>
+    </button>
   );
 }
 

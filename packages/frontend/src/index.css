@@ -4,6 +4,29 @@
 
 @layer base {
   :root {
+    --background: 185 35% 98%;
+    --foreground: 216 32% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 216 32% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 216 32% 15%;
+    --primary: 176 75% 28%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 42 88% 95%;
+    --secondary-foreground: 31 72% 18%;
+    --muted: 210 28% 94%;
+    --muted-foreground: 215 16% 42%;
+    --accent: 201 88% 94%;
+    --accent-foreground: 205 82% 22%;
+    --destructive: 0 70% 48%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 207 24% 84%;
+    --input: 207 24% 84%;
+    --ring: 176 75% 28%;
+    --radius: 0.5rem;
+  }
+
+  :root[data-theme='classic'] {
     --background: 0 0% 100%;
     --foreground: 0 0% 3.9%;
     --card: 0 0% 100%;
@@ -23,7 +46,53 @@
     --border: 0 0% 89.8%;
     --input: 0 0% 89.8%;
     --ring: 0 0% 3.9%;
-    --radius: 0.75rem;
+    --radius: 0.5rem;
+  }
+
+  :root[data-theme='graphite'] {
+    --background: 210 40% 98%;
+    --foreground: 222 36% 13%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 36% 13%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 36% 13%;
+    --primary: 217 45% 22%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 214 32% 91%;
+    --secondary-foreground: 217 45% 22%;
+    --muted: 214 32% 93%;
+    --muted-foreground: 215 20% 40%;
+    --accent: 214 95% 93%;
+    --accent-foreground: 218 78% 28%;
+    --destructive: 0 70% 48%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 214 24% 84%;
+    --input: 214 24% 84%;
+    --ring: 218 78% 36%;
+    --radius: 0.5rem;
+  }
+
+  :root[data-theme='ember'] {
+    --background: 30 46% 98%;
+    --foreground: 20 34% 14%;
+    --card: 0 0% 100%;
+    --card-foreground: 20 34% 14%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 34% 14%;
+    --primary: 19 79% 34%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 174 45% 92%;
+    --secondary-foreground: 176 72% 18%;
+    --muted: 31 42% 92%;
+    --muted-foreground: 25 18% 39%;
+    --accent: 43 91% 90%;
+    --accent-foreground: 30 79% 24%;
+    --destructive: 0 70% 48%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 27 26% 82%;
+    --input: 27 26% 82%;
+    --ring: 19 79% 34%;
+    --radius: 0.5rem;
   }
 }
 
@@ -34,5 +103,16 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.18);
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    font: inherit;
   }
 }
