@@ -26,7 +26,7 @@ If you only read one section, read **§1 (TL;DR)** then **§5 (How to run)**.
 ## 2. Repository layout
 
 ```
-fitness-club/
+kasrat/
 ├── README.md                 # short quickstart
 ├── REPORT.md                 # this file
 ├── SPEC.md                   # source of truth — read this first
@@ -148,8 +148,8 @@ npm -v     # 10.x or newer
 
 ```bash
 # 1. Clone
-git clone https://github.com/anandthakur1312/fitness-club.git
-cd fitness-club
+git clone https://github.com/anandthakur1312/kasrat.git
+cd kasrat
 
 # 2. Install (root install installs all workspaces)
 npm install
