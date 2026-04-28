@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { Plus, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { formatCurrency } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -12,11 +13,23 @@ type PlanDraft = {
   selected: boolean;
 };
 
+type TimingLine = {
+  id: number;
+  days: string;
+  hours: string;
+};
+
 const DEFAULT_PLANS: PlanDraft[] = [
   { durationMonths: 1, price: 1000, selected: true },
   { durationMonths: 3, price: 2700, selected: true },
   { durationMonths: 6, price: 5000, selected: true },
   { durationMonths: 12, price: 9000, selected: true },
+];
+
+const DEFAULT_TIMING_LINES: TimingLine[] = [
+  { id: 1, days: 'Mon-Sat', hours: 'Morning: 6:00 AM - 10:00 AM' },
+  { id: 2, days: 'Mon-Sat', hours: 'Evening: 5:00 PM - 9:00 PM' },
+  { id: 3, days: 'Sunday', hours: 'Closed' },
 ];
 
 function slugify(s: string): string {
@@ -28,6 +41,20 @@ function slugify(s: string): string {
     .replace(/-+/g, '-');
 }
 
+function buildTimingText(lines: TimingLine[]): string {
+  return lines
+    .map((line) => {
+      const days = line.days.trim();
+      const hours = line.hours.trim();
+      if (!days && !hours) return '';
+      if (!days) return hours;
+      if (!hours) return days;
+      return `${days}: ${hours}`;
+    })
+    .filter(Boolean)
+    .join('\n');
+}
+
 export default function SetupRoute() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -36,13 +63,14 @@ export default function SetupRoute() {
   const [slugTouched, setSlugTouched] = useState(false);
   const [slug, setSlug] = useState('');
   const [address, setAddress] = useState('');
-  const [timings, setTimings] = useState('');
+  const [timingLines, setTimingLines] = useState<TimingLine[]>(DEFAULT_TIMING_LINES);
   const [contactPhone, setContactPhone] = useState('');
   const [upiId, setUpiId] = useState('');
   const [plans, setPlans] = useState<PlanDraft[]>(DEFAULT_PLANS);
   const [submitting, setSubmitting] = useState(false);
 
   const effectiveSlug = slugTouched ? slug : slugify(name);
+  const timings = useMemo(() => buildTimingText(timingLines), [timingLines]);
   const selectedCount = plans.filter((p) => p.selected).length;
   const canSubmit = useMemo(
     () => name.trim() !== '' && effectiveSlug !== '' && selectedCount > 0 && !submitting,
@@ -55,6 +83,26 @@ export default function SetupRoute() {
 
   function updatePrice(i: number, price: number) {
     setPlans((prev) => prev.map((p, idx) => (idx === i ? { ...p, price } : p)));
+  }
+
+  function updateTimingLine(id: number, field: 'days' | 'hours', value: string) {
+    setTimingLines((prev) =>
+      prev.map((line) => (line.id === id ? { ...line, [field]: value } : line)),
+    );
+  }
+
+  function addTimingLine() {
+    setTimingLines((prev) => [
+      ...prev,
+      { id: Math.max(0, ...prev.map((line) => line.id)) + 1, days: '', hours: '' },
+    ]);
+  }
+
+  function removeTimingLine(id: number) {
+    setTimingLines((prev) => {
+      if (prev.length === 1) return prev;
+      return prev.filter((line) => line.id !== id);
+    });
   }
 
   async function handleSubmit() {
@@ -125,14 +173,15 @@ export default function SetupRoute() {
               className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
             />
           </Field>
-          <Field label={t('setup.timings')}>
-            <input
-              type="text"
-              value={timings}
-              onChange={(e) => setTimings(e.target.value)}
-              className="w-full h-10 rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+          <FieldGroup label={t('setup.timings')}>
+            <TimingsEditor
+              lines={timingLines}
+              preview={timings}
+              onChange={updateTimingLine}
+              onAdd={addTimingLine}
+              onRemove={removeTimingLine}
             />
-          </Field>
+          </FieldGroup>
           <Field label={t('setup.contactPhone')}>
             <input
               type="tel"
@@ -179,6 +228,88 @@ export default function SetupRoute() {
         >
           {t('setup.submit')}
         </button>
+      </div>
+    </div>
+  );
+}
+
+function TimingsEditor({
+  lines,
+  preview,
+  onChange,
+  onAdd,
+  onRemove,
+}: {
+  lines: TimingLine[];
+  preview: string;
+  onChange: (id: number, field: 'days' | 'hours', value: string) => void;
+  onAdd: () => void;
+  onRemove: (id: number) => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="space-y-2">
+      <div className="space-y-2">
+        {lines.map((line) => (
+          <div key={line.id} className="rounded-md border border-border bg-card p-2.5">
+            <div className="grid gap-2 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.25fr)_2.25rem] sm:items-end">
+              <div>
+                <div className="mb-1 text-[10px] uppercase tracking-[0.5px] font-medium text-muted-foreground">
+                  {t('setup.timing.days')}
+                </div>
+                <input
+                  type="text"
+                  value={line.days}
+                  onChange={(e) => onChange(line.id, 'days', e.target.value)}
+                  placeholder={t('setup.timing.daysPlaceholder')}
+                  className="w-full h-9 rounded-md border border-border bg-background px-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+                />
+              </div>
+              <div>
+                <div className="mb-1 text-[10px] uppercase tracking-[0.5px] font-medium text-muted-foreground">
+                  {t('setup.timing.hours')}
+                </div>
+                <input
+                  type="text"
+                  value={line.hours}
+                  onChange={(e) => onChange(line.id, 'hours', e.target.value)}
+                  placeholder={t('setup.timing.hoursPlaceholder')}
+                  className="w-full h-9 rounded-md border border-border bg-background px-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+                />
+              </div>
+              <button
+                type="button"
+                aria-label={t('setup.timing.removeLine')}
+                onClick={() => onRemove(line.id)}
+                disabled={lines.length === 1}
+                className="h-9 w-9 inline-flex items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-secondary disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <button
+        type="button"
+        onClick={onAdd}
+        className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border px-3 text-sm font-medium hover:bg-secondary"
+      >
+        <Plus className="h-4 w-4" />
+        <span>{t('setup.timing.addLine')}</span>
+      </button>
+
+      <div className="rounded-md border border-border bg-secondary/50 p-3">
+        <div className="text-[10px] uppercase tracking-[0.5px] font-medium text-muted-foreground">
+          {t('setup.timing.preview')}
+        </div>
+        <div className="mt-1 min-h-[52px] whitespace-pre-line text-sm leading-6">
+          {preview || (
+            <span className="text-muted-foreground">{t('setup.timing.emptyPreview')}</span>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -254,6 +385,17 @@ function PlanTile({
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div className="text-[11px] uppercase tracking-[0.5px] font-medium text-muted-foreground mb-1.5">
+        {label}
+      </div>
+      {children}
     </div>
   );
 }

@@ -201,6 +201,16 @@
     "publicUrl": "Public URL",
     "address": "Address",
     "timings": "Timings",
+    "timing": {
+      "days": "Days",
+      "daysPlaceholder": "Mon-Sat",
+      "hours": "Hours",
+      "hoursPlaceholder": "6 AM - 10 AM, 5 PM - 9 PM",
+      "addLine": "Add line",
+      "removeLine": "Remove timing line",
+      "preview": "Public page preview",
+      "emptyPreview": "No timings yet"
+    },
     "contactPhone": "Contact phone",
     "upiId": "UPI ID",
     "plan": {

@@ -185,6 +185,16 @@
     "publicUrl": "सार्वजनिक URL",
     "address": "पता",
     "timings": "समय",
+    "timing": {
+      "days": "दिन",
+      "daysPlaceholder": "सोम-शनि",
+      "hours": "समय",
+      "hoursPlaceholder": "सुबह 6 - 10, शाम 5 - 9",
+      "addLine": "लाइन जोड़ें",
+      "removeLine": "समय लाइन हटाएँ",
+      "preview": "सार्वजनिक पेज पूर्वावलोकन",
+      "emptyPreview": "अभी समय नहीं"
+    },
     "contactPhone": "संपर्क फ़ोन",
     "upiId": "यूपीआई आईडी",
     "plan": {

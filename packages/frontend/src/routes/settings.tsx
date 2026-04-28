@@ -147,11 +147,11 @@ export default function SettingsRoute() {
               />
             </Field>
             <Field label={t('settings.timings')}>
-              <input
-                type="text"
+              <textarea
                 value={timings}
                 onChange={(e) => setTimings(e.target.value)}
-                className="w-full h-10 rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+                rows={4}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
               />
             </Field>
             <Field label={t('settings.contactPhone')}>
