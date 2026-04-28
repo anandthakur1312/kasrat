@@ -154,26 +154,48 @@ cd fitness-club
 # 2. Install (root install installs all workspaces)
 npm install
 
-# 3. Set up the backend's local DB
-cp packages/backend/.env.example packages/backend/.env
+# 3. Set up Clerk (free): https://dashboard.clerk.com → Create application
+#    - Name it "Kasrat", enable Email + Google sign-in
+#    - From the API Keys page, copy:
+#        VITE_CLERK_PUBLISHABLE_KEY (starts with pk_test_)
+#        CLERK_SECRET_KEY           (starts with sk_test_)
+
+# 4. Configure env files
+cp packages/backend/.env.example  packages/backend/.env
+cp packages/frontend/.env.example packages/frontend/.env
+# Then edit both .env files and paste the keys from step 3.
+
+# 5. Set up the backend's local DB
 npm run prisma:generate --workspace packages/backend
 npm run prisma:migrate  --workspace packages/backend   # creates dev.db
 npm run db:seed         --workspace packages/backend   # loads fixtures
 ```
 
-That populates `packages/backend/prisma/dev.db` with one gym
+The seed populates `packages/backend/prisma/dev.db` with one gym
 ("Gungun Fitness Club", slug `gungun`), 4 plans, 3 members, 6
 memberships, and 5 payments — matching the SPEC §9 fixtures exactly.
+
+The seed Owner has `clerkUserId: 'seed_user_anand'` which is *not* a
+real Clerk user — the first time you sign in via Clerk and hit any
+authed endpoint, a fresh Owner row gets JIT-created with your real
+`clerkUserId`. The seed Gungun fixture is detached (its ownerId still
+points at the seed Owner) and serves as a public-page demo at
+`/g/gungun`. To make Gungun yours after signing up, either change
+`Gym.ownerId` in `dev.db` to your new owner's id, or just create a new
+gym via the /setup flow.
 
 ### 5.1 Run frontend in mock mode (no backend needed)
 
 ```bash
+# packages/frontend/.env should have VITE_USE_REAL_API empty (or removed)
 npm run dev --workspace packages/frontend
 # open http://localhost:5173
 ```
 
-Use this when you want UI work without spinning up Postgres/SQLite.
-State is kept in memory and resets on every full page reload.
+Mock mode still requires a Clerk publishable key (the app boots inside
+`<ClerkProvider>` always), but you can sign in with any test email
+through Clerk's dev UI and the mock layer takes over after that. State
+is kept in memory and resets on every full page reload.
 
 ### 5.2 Run frontend against the real backend
 
@@ -194,12 +216,18 @@ VITE_USE_REAL_API=1 npm run dev --workspace packages/frontend
 The frontend now reads/writes via `fetch` to the Fastify backend, and
 all writes persist to `dev.db`.
 
-If your backend is on a different host:
+If your backend is on a different host, set `VITE_API_URL` in
+`packages/frontend/.env` instead of inline.
 
-```bash
-VITE_API_URL=http://1.2.3.4:3001 VITE_USE_REAL_API=1 \
-  npm run dev --workspace packages/frontend
-```
+### 5.2.1 First-time signup flow (with real backend)
+
+1. Open http://localhost:5173 → redirected to `/sign-in`.
+2. Click "Sign up", create an account with email or "Continue with Google".
+3. After signup, Clerk redirects to `/setup`.
+4. Fill in the gym details and click Create gym. The backend creates an
+   `Owner` row (JIT, on the first authenticated request) and a `Gym`
+   row owned by it.
+5. Now `/` shows your members list (empty until you add some).
 
 ### 5.3 Build for production
 
@@ -501,6 +529,40 @@ the assertions are stable regardless of the host clock.
 ---
 
 ## 9. Debugging guide
+
+### 9.0 Auth (Clerk) issues
+
+**"Missing VITE_CLERK_PUBLISHABLE_KEY" thrown on app boot**
+You haven't created `packages/frontend/.env`. Copy from `.env.example`
+and paste your `pk_test_…` key from the Clerk dashboard.
+
+**Backend returns 500 on every request**
+Check `packages/backend/.env` has `CLERK_SECRET_KEY=sk_test_…`. The
+backend logs `CLERK_SECRET_KEY is not configured` if it's missing.
+
+**Backend returns 401 on every request even though I'm signed in**
+Token isn't being attached. Open the browser network tab, look at the
+request headers — `Authorization: Bearer eyJ…` should be there. If
+not, `<ClerkTokenBridge />` isn't mounting (it's in `App.tsx` directly
+under `<BrowserRouter>` — confirm it wasn't accidentally removed) or
+Clerk hasn't finished hydrating yet (check console for Clerk errors).
+
+**`/sign-in` shows but Google button does nothing**
+You enabled email but not Google in your Clerk dashboard. Open the
+Clerk dashboard → User & Authentication → Social Connections →
+turn on Google.
+
+**JIT Owner created but Gym fetch returns 404 with code: NO_GYM**
+Expected for a brand-new owner — the frontend should redirect them to
+`/setup`. If it doesn't, check `members-list.tsx` — the load() function
+must catch `ApiError` and check `err.code === 'NO_GYM'`.
+
+**Wrong owner sees Gungun's data**
+Should never happen because every protected route filters by
+`gym.id` from `getOwnerGym(req)`. If it does, look at the failing
+route — chances are someone wrote `prisma.member.findUnique({ where: { id }})`
+without the gymId scope. The pattern is always
+`prisma.member.findFirst({ where: { id, gymId: gym.id }})`.
 
 ### 9.1 Frontend doesn't load
 

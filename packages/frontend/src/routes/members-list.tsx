@@ -5,6 +5,7 @@ import { useClerk } from '@clerk/react';
 import { Menu } from 'lucide-react';
 import type { MemberListItem, MembersListResponse } from '@gym-app/shared/types';
 import { api } from '@/lib/api';
+import { ApiError } from '@/lib/realApi';
 import { Avatar } from '@/components/avatar';
 import { LanguageToggle } from '@/components/language-toggle';
 import { cn } from '@/lib/utils';
@@ -31,12 +32,17 @@ export default function MembersListRoute() {
       const [list, gym] = await Promise.all([api.getMembersList(), api.getGym()]);
       setData(list);
       setGymName(gym.name);
-    } catch {
+    } catch (err) {
+      // Newly-signed-in owner who hasn't completed setup yet → /setup.
+      if (err instanceof ApiError && err.code === 'NO_GYM') {
+        navigate('/setup', { replace: true });
+        return;
+      }
       setError(true);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
     void load();
