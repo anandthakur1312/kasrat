@@ -10,6 +10,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@clerk/clerk-react": "^5.61.6",
     "@gym-app/shared": "*",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
