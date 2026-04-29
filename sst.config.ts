@@ -45,14 +45,26 @@ export default $config({
         CLERK_SECRET_KEY: clerkSecretKey.value,
         NODE_ENV: "production",
       },
-      // Bundle the Prisma client + engine binary, and copy the schema file
-      // into the deployment package so Prisma can find it at runtime.
-      // (Prisma binary targets in schema.prisma must include rhel-openssl-3.0.x.)
+      // Prisma + Lambda bundling. Three things have to land in the zip:
+      //   1. @prisma/client — the public facade (resolved as an npm dep).
+      //   2. .prisma/client — the generated implementation that the facade
+      //      lazily requires at runtime, including the rhel-openssl-3.0.x
+      //      query engine binary. esbuild won't bundle this hidden dir, so
+      //      we copy it verbatim into node_modules/ inside the bundle.
+      //   3. schema.prisma — Prisma reads this at startup to know the
+      //      datasource URL env var name etc.
       nodejs: {
-        install: ["@prisma/client", "prisma"],
+        install: ["@prisma/client"],
       },
       copyFiles: [
-        { from: "packages/backend/prisma/schema.prisma", to: "schema.prisma" },
+        {
+          from: "node_modules/.prisma/client",
+          to: "node_modules/.prisma/client",
+        },
+        {
+          from: "packages/backend/prisma/schema.prisma",
+          to: "schema.prisma",
+        },
       ],
     });
 

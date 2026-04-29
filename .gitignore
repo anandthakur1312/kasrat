@@ -44,6 +44,12 @@ pnpm-debug.log*
 # Workspace tools (not part of Kasrat)
 mac-cleanup-review/
 
-# SST (Pulumi state, generated platform files)
+# SST (Pulumi state, generated platform + type files)
 .sst/
 .open-next/
+sst-env.d.ts
+packages/*/sst-env.d.ts
+
+# Prisma temp (Prisma writes a flag file or dir at .temp during migrate)
+packages/backend/.temp
+packages/backend/.temp/

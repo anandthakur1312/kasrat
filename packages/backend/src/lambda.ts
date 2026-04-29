@@ -7,7 +7,8 @@ let cachedHandler: PromiseHandler<APIGatewayProxyEventV2, LambdaResponse> | null
 async function getHandler(): Promise<PromiseHandler<APIGatewayProxyEventV2, LambdaResponse>> {
   if (cachedHandler) return cachedHandler;
   const app = await buildApp();
-  await app.ready();
+  // awsLambdaFastify must wrap before app.ready() — it adds request decorators
+  // (e.g. `request.awsLambda`) which Fastify rejects post-start.
   cachedHandler = awsLambdaFastify(app);
   return cachedHandler;
 }
