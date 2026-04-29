@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import type { Gym } from '@gym-app/shared/types';
 import { api } from '@/lib/api';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { TimingsEditor } from '@/components/timings-editor';
 
 export default function SettingsRoute() {
   const { t } = useTranslation();
@@ -146,14 +147,9 @@ export default function SettingsRoute() {
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
               />
             </Field>
-            <Field label={t('settings.timings')}>
-              <input
-                type="text"
-                value={timings}
-                onChange={(e) => setTimings(e.target.value)}
-                className="w-full h-10 rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
-              />
-            </Field>
+            <FieldGroup label={t('settings.timings')}>
+              <TimingsEditor initialText={timings} onChange={setTimings} />
+            </FieldGroup>
             <Field label={t('settings.contactPhone')}>
               <input
                 type="tel"
@@ -245,5 +241,19 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       </div>
       {children}
     </label>
+  );
+}
+
+// Same chrome as <Field> but renders as a <div> instead of a <label>, since
+// the contents (TimingsEditor) own multiple inputs and shouldn't all wire
+// their click events to one label.
+function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div className="text-[11px] uppercase tracking-[0.5px] font-medium text-muted-foreground mb-1.5">
+        {label}
+      </div>
+      {children}
+    </div>
   );
 }

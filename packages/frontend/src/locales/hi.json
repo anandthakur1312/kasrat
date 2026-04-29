@@ -10,6 +10,23 @@
     "save": "सहेजें",
     "cancel": "रद्द करें"
   },
+  "timings": {
+    "days": "दिन",
+    "daysPlaceholder": "सोम–शनि",
+    "hours": "समय",
+    "hoursPlaceholder": "सुबह 6:00 – 10:00",
+    "addLine": "लाइन जोड़ें",
+    "removeLine": "समय लाइन हटाएँ",
+    "preview": "सार्वजनिक पेज पूर्वावलोकन",
+    "emptyPreview": "अभी समय नहीं",
+    "defaults": {
+      "weekdayDays": "सोम–शनि",
+      "weekdayMorning": "सुबह: 6:00 – 10:00",
+      "weekdayEvening": "शाम: 5:00 – 9:00",
+      "sundayDays": "रविवार",
+      "sundayHours": "बंद"
+    }
+  },
   "members": {
     "title": "सदस्य",
     "search": "नाम या फ़ोन से खोजें",

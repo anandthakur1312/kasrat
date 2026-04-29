@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { formatCurrency } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { TimingsEditor } from '@/components/timings-editor';
 
 type PlanDraft = {
   durationMonths: number;
@@ -125,14 +126,9 @@ export default function SetupRoute() {
               className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
             />
           </Field>
-          <Field label={t('setup.timings')}>
-            <input
-              type="text"
-              value={timings}
-              onChange={(e) => setTimings(e.target.value)}
-              className="w-full h-10 rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
-            />
-          </Field>
+          <FieldGroup label={t('setup.timings')}>
+            <TimingsEditor initialText="" onChange={setTimings} />
+          </FieldGroup>
           <Field label={t('setup.contactPhone')}>
             <input
               type="tel"
@@ -254,6 +250,17 @@ function PlanTile({
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div className="text-[11px] uppercase tracking-[0.5px] font-medium text-muted-foreground mb-1.5">
+        {label}
+      </div>
+      {children}
     </div>
   );
 }
