@@ -444,7 +444,7 @@ The Phase 8.5 wrap-up flagged a queue of 9 still-open decisions. As of today:
 |---|---|---|---|
 | 1 | Frontend host | 🔒 **Decided:** Cloudflare Pages | — |
 | 2 | Backend host | 🔒 **Decided:** AWS Lambda + API Gateway via SST | — |
-| 3 | Database | 🔒 **Decided:** Neon Postgres (prod) / SQLite (dev) | — |
+| 3 | Database | 🔒 **Decided:** Neon Postgres everywhere — `main` branch in prod, `dev` branch for local. SQLite dropped (see §2.5) | — |
 | 4 | Auth | 🔒 **Decided:** Clerk | — |
 | 5 | Repo rename | 🔒 **Done:** `fitness-club` → `kasrat` | — |
 | 6 | CI/CD on PR / push to master | 🔒 **Decided:** GitHub Actions (typecheck + test + lint on PR) + Cloudflare Pages auto-preview; manual `sst deploy` for backend; manual `prisma migrate deploy` | — |

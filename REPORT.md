@@ -13,13 +13,51 @@ If you only read one section, read **§1 (TL;DR)** then **§5 (How to run)**.
 - A bilingual (English/Hindi) gym-management web app for a tiny gym in
   Sagar, MP. Mobile-first (~375px). Full spec in [SPEC.md](./SPEC.md).
 - npm-workspaces monorepo with three packages: `shared`, `frontend`, `backend`.
-- Frontend: **React 18 + Vite 5 + Tailwind 3 + i18next**. All 9 SPEC screens implemented.
-- Backend: **Fastify 5 + Prisma 5 + Zod**, Postgres via Neon (dev branch locally, main in prod). Full REST API.
+- Frontend: **[React 18](https://react.dev) + [Vite 5](https://vite.dev) + [Tailwind 3](https://tailwindcss.com) + [i18next](https://react.i18next.com)**. All 9 SPEC screens implemented.
+- Backend: **[Fastify 5](https://fastify.io) + [Prisma 5](https://www.prisma.io) + [Zod](https://zod.dev)**, Postgres via [Neon](https://neon.tech) (dev branch locally, main in prod). Full REST API.
 - The frontend can run **standalone** (uses an in-memory mock layer) or
   **against the real backend** by setting one env var. A 3-line switch
   in `src/lib/api.ts` chooses between them.
-- Everything type-checks (`npx tsc --noEmit` clean in both packages) and
-  end-to-end works against a Neon dev branch.
+- Everything type-checks (`npx tsc --noEmit` clean in both packages),
+  Vitest is green (8/8), and end-to-end works against a Neon dev branch
+  locally and the Lambda deployment in production.
+
+---
+
+## 1.5 Live URLs and dashboards
+
+**Production endpoints:**
+
+| | |
+| :-- | :-- |
+| Frontend | https://kasrat.pages.dev |
+| Backend (Lambda Function URL) | https://lckqktk3eugpdfpdw75pty3nia0wfpfi.lambda-url.ap-south-1.on.aws |
+| Source repo | https://github.com/anandthakur1312/kasrat |
+| CI runs | https://github.com/anandthakur1312/kasrat/actions |
+
+**Admin dashboards** (you'll need to be logged in):
+
+| | |
+| :-- | :-- |
+| Neon (Postgres — `ap-southeast-1`) | https://console.neon.tech |
+| Clerk (Auth — Development instance) | https://dashboard.clerk.com |
+| AWS Lambda (Mumbai) | https://ap-south-1.console.aws.amazon.com/lambda/home?region=ap-south-1 |
+| AWS CloudWatch logs | https://ap-south-1.console.aws.amazon.com/cloudwatch/home?region=ap-south-1#logsV2:log-groups |
+| Cloudflare Pages | https://dash.cloudflare.com |
+
+**Quick health checks** from any terminal (no auth needed):
+
+```bash
+curl https://lckqktk3eugpdfpdw75pty3nia0wfpfi.lambda-url.ap-south-1.on.aws/health
+# → {"ok":true}
+
+curl -i https://lckqktk3eugpdfpdw75pty3nia0wfpfi.lambda-url.ap-south-1.on.aws/members
+# → 401 {"error":"Unauthorized"}   ← Clerk gate is intact
+```
+
+A custom domain (`kasrat.in`) will replace `kasrat.pages.dev` before the
+first physical QR poster is printed — see
+[DECISIONS.md §8.3](./DECISIONS.md).
 
 ---
 

@@ -30,26 +30,26 @@ A bilingual (English/Hindi) responsive web app for tiny Indian gym owners (50–
 
 | Layer | Choice |
 | :---- | :---- |
-| Frontend | React \+ Vite \+ TypeScript \+ Tailwind CSS \+ shadcn/ui |
-| Routing | React Router |
-| i18n | react-i18next (set up from day 1\) |
-| Backend | Node.js \+ TypeScript \+ Fastify \+ Prisma |
-| Database | Postgres on Neon (serverless, scales to zero) |
-| Auth | Clerk (managed) — Google OAuth (primary) \+ Email/Password (fallback) |
-| Compute | AWS Lambda \+ API Gateway via SST |
-| Frontend hosting | Cloudflare Pages |
-| File storage | S3 (ap-south-1) — for v2 photos/videos |
-| Email | AWS SES — deferred until v1.1 |
-| DNS / SSL | Cloudflare (free) |
-| Region | ap-south-1 (Mumbai) |
-| Monorepo | Single repo, npm workspaces |
-| IDE | Cursor (primary) \+ Claude Code CLI (agentic tasks) |
+| Frontend | [React](https://react.dev) \+ [Vite](https://vite.dev) \+ [TypeScript](https://www.typescriptlang.org) \+ [Tailwind CSS](https://tailwindcss.com) \+ [shadcn/ui](https://ui.shadcn.com) |
+| Routing | [React Router](https://reactrouter.com) |
+| i18n | [react-i18next](https://react.i18next.com) (set up from day 1\) |
+| Backend | [Node.js](https://nodejs.org) \+ [TypeScript](https://www.typescriptlang.org) \+ [Fastify](https://fastify.io) \+ [Prisma](https://www.prisma.io) |
+| Database | Postgres on [Neon](https://neon.tech) (serverless, scales to zero) — `ap-southeast-1` Singapore (Mumbai not on free tier) |
+| Auth | [Clerk](https://clerk.com) (managed) — Google OAuth (primary) \+ Email/Password (fallback) |
+| Compute | [AWS Lambda](https://aws.amazon.com/lambda) \+ [API Gateway](https://aws.amazon.com/api-gateway) via [SST](https://sst.dev) |
+| Frontend hosting | [Cloudflare Pages](https://pages.cloudflare.com) |
+| File storage | [Amazon S3](https://aws.amazon.com/s3) (ap-south-1) — for v2 photos/videos |
+| Email | [AWS SES](https://aws.amazon.com/ses) — deferred until v1.1 |
+| DNS / SSL | [Cloudflare](https://www.cloudflare.com/dns) (free) |
+| Region | `ap-south-1` (Mumbai) for compute, `ap-southeast-1` (Singapore) for DB |
+| Monorepo | Single repo, [npm workspaces](https://docs.npmjs.com/cli/v10/using-npm/workspaces) |
+| IDE | [Cursor](https://cursor.com) (primary) \+ [Claude Code](https://claude.com/claude-code) CLI (agentic tasks) |
 
 ---
 
 ## 3\. Build phases (current status)
 
-✅ Phase 1: Product definition ✅ Phase 2: Critical flow decisions ✅ Phase 3: Data model ✅ Phase 4: Tech stack ✅ Phase 5: UI wireframes (all 8 screens) ✅ Phase 6: UI build with mocked data ✅ Phase 7: Backend foundation \+ API spine ✅ Phase 8: Wire UI to real APIs 🔵 **Phase 8.5: Real auth (Clerk) \+ multi-tenancy ← we are here** ⬜ Phase 9: Pre-launch pilot at family's gym in Sagar
+✅ Phase 1: Product definition ✅ Phase 2: Critical flow decisions ✅ Phase 3: Data model ✅ Phase 4: Tech stack ✅ Phase 5: UI wireframes (all 8 screens) ✅ Phase 6: UI build with mocked data ✅ Phase 7: Backend foundation \+ API spine ✅ Phase 8: Wire UI to real APIs ✅ Phase 8.5: Real auth (Clerk) \+ multi-tenancy ✅ Phase 8.6: Production deploy (Lambda \+ Neon \+ Cloudflare Pages) 🔵 **Phase 9: Pre-launch pilot at family's gym in Sagar ← we are here**
 
 **The plan:** build the entire UI against a mock API layer first. The mock layer obeys TypeScript types derived from the real schema, so when the backend is built later, the real API conforms to the same contract. Zero shape drift.
 
