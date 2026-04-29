@@ -165,10 +165,12 @@ cp packages/backend/.env.example  packages/backend/.env
 cp packages/frontend/.env.example packages/frontend/.env
 # Then edit both .env files and paste the keys from step 3.
 
-# 5. Set up the backend's local DB
-npm run prisma:generate --workspace packages/backend
-npm run prisma:migrate  --workspace packages/backend   # creates dev.db
-npm run db:seed         --workspace packages/backend   # loads fixtures
+# 5. Bootstrap the local DB (idempotent)
+npm run setup:local
+# This runs: install + prisma generate + prisma migrate dev + db seed.
+# Re-run any time to recreate dev.db from scratch — the seed uses upsert
+# so existing rows update in place, but if you rm dev.db first you get a
+# fresh state.
 ```
 
 The seed populates `packages/backend/prisma/dev.db` with one gym
@@ -668,60 +670,143 @@ is allowed. Check the Network tab — preflight `OPTIONS` should return 204.
 These were out of scope for the pilot or deferred to a later phase.
 Listed so you don't think they were missed:
 
-- **Real auth.** `/login` is a no-op mock. Calls navigate but no
-  session, no protected routes, no logout. SPEC §13.5 calls for magic
-  link or Google OAuth (Supabase Auth or similar).
-- **Multi-tenant filtering.** Backend uses `prisma.gym.findFirst()`.
-  Schema already has `Owner → Gym` foreign key, so adding an
-  `ownerId`/`gymId` filter to every route is mechanical.
 - **End-to-end tests.** Vitest covers the status-computation logic on
   the backend (8 unit tests in `packages/backend/src/lib/status.test.ts`).
   No Playwright / browser tests yet.
 - **PWA / offline / push.** No service worker, no manifest, no favicon.
 - **Dark mode toggle.** CSS variables are wired, no toggle UI yet.
-- **Production deploy.** Not configured — see §11.
+- **Production deploy executed.** SST config and Cloudflare Pages
+  workflow are in place (see §11), but no resources have been
+  provisioned yet. First deploy is gated on creating Neon + AWS
+  accounts.
+- **Slug uniqueness live check + reserved-slug list.** Decided
+  ([DECISIONS.md §10 Q9](./DECISIONS.md)) but not implemented yet.
 
 ---
 
-## 11. To deploy to production
+## 11. Deploying to production
 
-1. **Pick hosts.**
-   - Frontend: Vercel / Netlify / Cloudflare Pages (any static host).
-   - Backend: Render / Fly / Railway (anything that runs Node).
-   - DB: Postgres on Render / Neon / Supabase.
+The locked architecture (see [DECISIONS.md](./DECISIONS.md)):
 
-2. **Switch Prisma datasource** in `packages/backend/prisma/schema.prisma`:
+- **Frontend** → Cloudflare Pages
+- **Backend** → AWS Lambda + API Gateway via SST, ap-south-1 (Mumbai)
+- **Database** → Neon Postgres (ap-south-1)
+- **Auth** → Clerk (production keys)
 
-   ```prisma
-   datasource db {
-     provider = "postgresql"   // was "sqlite"
-     url      = env("DATABASE_URL")
-   }
-   ```
+### 11.1 One-time setup (you do this once per fresh laptop)
 
-3. **Re-create the migration for Postgres:**
+```bash
+# 1. Install AWS CLI and configure with an IAM user that has admin on a
+#    fresh AWS account (we'll narrow permissions later).
+brew install awscli                                # mac
+aws configure                                       # paste access key + secret
+aws sts get-caller-identity                         # confirms creds work
 
-   ```bash
-   rm -rf packages/backend/prisma/migrations
-   DATABASE_URL=postgres://… npm run prisma:migrate --workspace packages/backend
-   ```
+# 2. Sign up at neon.tech (free), create a project named "kasrat" in
+#    region "AWS / ap-south-1 (Mumbai)". Copy the pooled connection URL
+#    (looks like postgres://user:pass@ep-xxx-pooler.../neondb?sslmode=require).
 
-4. **Build** both packages (`npm run build --workspace ...`).
+# 3. Sign up / log in at cloudflare.com. Note the Account ID from the
+#    sidebar of any zone or the dashboard home page.
+```
 
-5. **Deploy:**
-   - Backend start command: `prisma migrate deploy && node dist/server.js`
-   - Set `DATABASE_URL` and `PORT` env vars.
-   - Lock down `@fastify/cors` to your frontend origin.
+### 11.2 Switch Prisma to Postgres before the first backend deploy
 
-6. **Build the frontend with the right backend URL:**
+The dev DB uses SQLite for laptop convenience; production needs Postgres.
 
-   ```bash
-   VITE_USE_REAL_API=1 \
-   VITE_API_URL=https://api.yourdomain.com \
-     npm run build --workspace packages/frontend
-   ```
+```prisma
+// packages/backend/prisma/schema.prisma
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
 
-7. Upload `packages/frontend/dist/` to the static host.
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]   // native + Lambda
+}
+```
+
+Then regenerate migrations against the Neon connection:
+
+```bash
+rm -rf packages/backend/prisma/migrations
+DATABASE_URL="postgres://...neondb?sslmode=require" \
+  npm run prisma:migrate --workspace packages/backend -- --name init
+```
+
+(The migration files become Postgres-flavored DDL — different from the
+existing SQLite migration. Commit these new files; never mix SQLite and
+Postgres migration history in the same folder.)
+
+### 11.3 Deploy the backend (Lambda)
+
+```bash
+# Set secrets once per stage. Stored in AWS Systems Manager Parameter Store.
+npx sst secret set DatabaseUrl    "$NEON_DATABASE_URL"   --stage prod
+npx sst secret set ClerkSecretKey "$CLERK_SECRET_KEY"    --stage prod
+
+# Run pending migrations against Neon (one-shot, before/after deploys).
+DATABASE_URL="$NEON_DATABASE_URL" \
+  npx prisma migrate deploy --schema packages/backend/prisma/schema.prisma
+
+# Provision Lambda + API Gateway + IAM in ap-south-1.
+npm run deploy
+
+# SST prints the Lambda Function URL (something like
+# https://<id>.lambda-url.ap-south-1.on.aws). Copy it for the frontend env.
+```
+
+### 11.4 Deploy the frontend (Cloudflare Pages)
+
+In the Cloudflare dashboard:
+
+1. Workers & Pages → Create → Pages → Connect to Git → pick the `kasrat` repo.
+2. Build configuration:
+   - Build command: `npm run build --workspace packages/frontend`
+   - Build output directory: `packages/frontend/dist`
+   - Root directory: leave blank (we build from repo root)
+3. Environment variables (Production):
+   - `VITE_USE_REAL_API=1`
+   - `VITE_API_URL=<Lambda Function URL from §11.3>`
+   - `VITE_CLERK_PUBLISHABLE_KEY=<pk_live_...>`
+4. Save & Deploy.
+
+Cloudflare auto-builds on every push to `master` and creates preview URLs
+for every PR.
+
+### 11.5 First-time signup against the deployed stack
+
+1. Open `https://kasrat.pages.dev` (or `https://kasrat.in` once the
+   custom domain is wired — see [DECISIONS.md §8.3](./DECISIONS.md)).
+2. Sign up via Clerk → redirected to `/setup`.
+3. Fill in gym details → `POST /gyms` JIT-creates the Owner row in Neon
+   and creates the Gym + Plans.
+4. Land on `/` → empty members list.
+
+### 11.6 Re-deploys
+
+```bash
+# After a backend code change:
+npm run deploy
+
+# After a backend schema change:
+DATABASE_URL="$NEON_DATABASE_URL" \
+  npx prisma migrate deploy --schema packages/backend/prisma/schema.prisma
+npm run deploy
+
+# After a frontend change:
+git push origin master   # Cloudflare auto-deploys
+```
+
+### 11.7 Tearing down a non-prod stage
+
+```bash
+npx sst remove --stage <stage>
+```
+
+`prod` stage is configured with `removal: "retain"` so this command will
+not destroy production resources even if pointed at it.
 
 ---
 

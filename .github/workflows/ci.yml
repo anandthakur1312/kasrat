@@ -1,0 +1,38 @@
+name: ci
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # Prisma generate reads DATABASE_URL from schema.prisma but doesn't
+      # connect to anything; a dummy URL keeps the generator happy in CI.
+      - name: Generate Prisma client
+        env:
+          DATABASE_URL: file:./ci.db
+        run: npm run prisma:generate --workspace packages/backend
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint frontend
+        run: npm run lint --workspace packages/frontend
+
+      - name: Test backend
+        run: npm test
