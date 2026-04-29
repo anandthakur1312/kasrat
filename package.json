@@ -9,7 +9,7 @@
     "dev": "npm run dev --workspace packages/frontend",
     "build": "npm run build --workspace packages/frontend",
     "lint": "npm run lint --workspace packages/frontend",
-    "setup:local": "npm install && npm run prisma:generate --workspace packages/backend && npm run prisma:migrate --workspace packages/backend && npm run db:seed --workspace packages/backend",
+    "setup:local": "npm install && npm run prisma:generate --workspace packages/backend && npm run prisma:deploy --workspace packages/backend && npm run db:seed --workspace packages/backend",
     "typecheck": "npm run -s typecheck --workspace packages/frontend && npm run -s typecheck --workspace packages/backend",
     "test": "npm run test --workspace packages/backend",
     "deploy": "sst deploy --stage prod",

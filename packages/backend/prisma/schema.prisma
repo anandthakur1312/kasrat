@@ -1,12 +1,16 @@
-// Prisma schema for Gym App
-// SQLite for local dev; switch provider to "postgresql" for AWS deploy.
+// Prisma schema for Kasrat.
+// Postgres everywhere. Local dev points at a Neon `dev` branch via
+// packages/backend/.env; production points at the Neon `main` branch via the
+// SST DatabaseUrl secret. binaryTargets includes both the host platform's
+// native engine (laptop dev) and rhel-openssl-3.0.x (AWS Lambda runtime).
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
