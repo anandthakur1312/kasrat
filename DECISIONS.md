@@ -2,9 +2,9 @@
 
 > **Purpose:** Every meaningful decision made on this project, with the *what*, the *why*, and the *justification* (the reasoning that backs the why). Use this as a single place to challenge or revisit any choice.
 >
-> **Scope:** Decisions extracted from the original product/spec sessions, the Phase 6 UI build, the Phase 7 backend build, and the Phase 8.5 auth + multi-tenancy build (sessions on 2026-04-26 and 2026-04-27).
+> **Scope:** Decisions from the original product/spec sessions through Phase 8.6 (production deploy on Lambda + Neon + Cloudflare Pages). Sessions: 2026-04-26 → 2026-04-29.
 >
-> **Status legend:** 🔒 Locked — won't revisit unless evidence forces it. 🟡 Provisional — fine for pilot, may revisit at scale. 🔵 Pending — not yet decided.
+> **Status legend:** 🔒 Locked — won't revisit unless evidence forces it. 🟡 Provisional — fine for pilot, may revisit at scale. 🔵 Pending — not yet decided. ⚙ Decided + shipped (code is in master). 📋 Decided, not yet implemented.
 
 ---
 
@@ -19,7 +19,9 @@
 7. [Implementation details surfaced during the build](#7-implementation-details-surfaced-during-the-build)
 8. [Branding & domain](#8-branding--domain)
 9. [Repository, tooling & workflow](#9-repository-tooling--workflow)
-10. [Pending decisions (the 9 that are still open)](#10-pending-decisions)
+10. [Original 9-question queue (all closed)](#10-pending-decisions)
+11. [Reserved slug list](#11-reserved-slug-list)
+12. [Production deployment decisions (Phase 8.6)](#12-production-deployment-decisions-phase-86)
 
 ---
 
@@ -246,7 +248,7 @@
 - **Why:** Visible filters > magic.
 - **Justification:**
   - **Prisma extensions** (e.g. middleware that auto-injects `gymId`) move the filter out of the route, making it easy to forget a route is protected.
-  - **Postgres RLS** is the gold standard but: (1) SQLite (our dev DB) doesn't support it, breaking dev/prod parity; (2) it's deferred until we migrate to Neon, at which point we can layer it in as defense-in-depth without removing the helper-function checks.
+  - **Postgres RLS** is the gold standard and now technically available (we're on Neon Postgres in both prod and local-dev branches as of Phase 8.6, see §2.5). RLS remains deferred — we'll layer it in as defense-in-depth on top of helper-function checks if/when we have a multi-developer team or a compliance ask demands it. The helper-function checks stay either way.
   - The helper-function pattern means a code reviewer sees the `gymId` filter on every line that touches data — the security boundary is in the same file as the business logic.
 - ID-based lookups must use `findFirst({ id, gymId })` not `findUnique({ id })` — the latter would let a user fetch any row by ID.
 
@@ -277,6 +279,14 @@
 - **What:** When an authenticated owner has no Gym row yet, the backend returns 404 with `{ code: 'NO_GYM' }`. The frontend's `members-list` route catches this and redirects to `/setup`.
 - **Why:** New users without a gym shouldn't see an empty members list — they should be funneled into setup.
 - **Justification:** The alternative was a separate "do you have a gym?" call before every page load. Returning a structured error from the existing call is one round-trip, not two.
+
+### 5.10 Stay on Clerk Development instance until `kasrat.in` is wired 🔒
+- **What:** Production currently uses Clerk's **Development** instance (the one with `pk_test_…` / `sk_test_…` keys). Migration to a Clerk **Production** instance with `pk_live_…` / `sk_live_…` keys is gated on the custom domain being purchased and DNS verified.
+- **Why:** Clerk Production instances **require a verified custom domain** (you point ~5 CNAME records at `clerk.<domain>`, `accounts.<domain>`, etc.). `kasrat.pages.dev` is not eligible. We deferred buying `kasrat.in` until the first physical QR poster needs printing (§8.3), so Production instance is correctly downstream of that.
+- **Justification:**
+  - Clerk's Development instance supports the same OAuth providers, the same React components, the same user data model. Real signups work; real Google OAuth works; verification emails go through. The only user-visible difference is a small "Development mode" badge on auth emails, which is fine for the pilot.
+  - Migration is mechanical when the time comes: create the Production instance on the verified domain, swap the SST `ClerkSecretKey` secret + Cloudflare Pages `VITE_CLERK_PUBLISHABLE_KEY` env var, redeploy, and migrate any users via Clerk's import API.
+  - Doing this now (no domain) would mean either skipping the Production instance entirely or hosting on a stand-in domain, both of which create migration debt.
 
 ---
 
@@ -436,29 +446,27 @@
 
 ---
 
-## 10. Pending decisions
+## 10. Original 9-question queue (all closed)
 
-The Phase 8.5 wrap-up flagged a queue of 9 still-open decisions. As of today:
+The Phase 8.5 wrap-up flagged a queue of 9 still-open decisions. All 9 are now resolved (decided + reasoned). Most are also **shipped** — the code is in `master`. Two are decided but not yet implemented; those are tracked here so they don't get lost.
 
-| # | Question | Status | Default suggestion |
+| # | Question | Decision | Implementation |
 |---|---|---|---|
-| 1 | Frontend host | 🔒 **Decided:** Cloudflare Pages | — |
-| 2 | Backend host | 🔒 **Decided:** AWS Lambda + API Gateway via SST | — |
-| 3 | Database | 🔒 **Decided:** Neon Postgres everywhere — `main` branch in prod, `dev` branch for local. SQLite dropped (see §2.5) | — |
-| 4 | Auth | 🔒 **Decided:** Clerk | — |
-| 5 | Repo rename | 🔒 **Done:** `fitness-club` → `kasrat` | — |
-| 6 | CI/CD on PR / push to master | 🔒 **Decided:** GitHub Actions (typecheck + test + lint on PR) + Cloudflare Pages auto-preview; manual `sst deploy` for backend; manual `prisma migrate deploy` | — |
-| 7 | Backups | 🔒 **Decided:** Neon's built-in PITR (7-day window on free tier); revisit at scale | — |
-| 8 | Error tracking | 🔒 **Decided:** Sentry (free tier) on frontend only; AWS CloudWatch for backend logs. Layer Sentry onto backend later if traffic grows | — |
-| 9 | Slug uniqueness check + reserved-slug list | 🔒 **Decided:** DB UNIQUE constraint + live availability check (`GET /public/slugs/check?slug=...`) + reserved list in `packages/shared` (see §11) | — |
-
-All 9 questions resolved as of 2026-04-28.
+| 1 | Frontend host | 🔒 Cloudflare Pages | ⚙ Live at https://kasrat.pages.dev |
+| 2 | Backend host | 🔒 AWS Lambda + API Gateway via SST in `ap-south-1` | ⚙ Live, see [REPORT §1.5](./REPORT.md) |
+| 3 | Database | 🔒 Neon Postgres — `main` in prod, `dev` branch for local; SQLite dropped (§2.5) | ⚙ Live |
+| 4 | Auth | 🔒 Clerk | ⚙ Shipped (Development instance — see §5.10 for the Production-instance migration plan) |
+| 5 | Repo rename | 🔒 `fitness-club` → `kasrat` | ⚙ Done |
+| 6 | CI/CD on PR / push to master | 🔒 GitHub Actions (typecheck + lint + test on PR) + Cloudflare Pages auto-preview; manual `sst deploy` and `prisma migrate deploy` for backend | ⚙ Workflow file at `.github/workflows/ci.yml` |
+| 7 | Backups | 🔒 Neon's built-in PITR (7-day on free tier); revisit at scale | ⚙ Active automatically (Neon default) |
+| 8 | Error tracking | 🔒 Sentry (free tier) on frontend only; AWS CloudWatch for backend | 📋 **Decided, not yet implemented** — Sentry SDK not installed yet. CloudWatch is automatic via Lambda. |
+| 9 | Slug uniqueness check + reserved-slug list | 🔒 DB UNIQUE constraint + live availability check (`GET /public/slugs/check?slug=...`) + reserved list in `packages/shared/src/reservedSlugs.ts` | 📋 **Decided, not yet implemented** — endpoint and shared module don't exist yet. The decision text below in §11 is the spec for whoever implements it. |
 
 ---
 
 ## 11. Reserved slug list
 
-Slugs that **cannot** be claimed as gym slugs. Lives in `packages/shared/src/reservedSlugs.ts` so frontend and backend share one source of truth.
+Slugs that **cannot** be claimed as gym slugs. Will live in `packages/shared/src/reservedSlugs.ts` (📋 not yet implemented — see §10 Q9 status) so frontend and backend share one source of truth.
 
 ### Format rules (enforced before checking the list)
 
@@ -489,4 +497,42 @@ When new app routes are added, append to this list in the same PR.
 
 ---
 
-*Last updated 2026-04-28. Add new decisions at the bottom of the relevant section, with a short What / Why / Justification block.*
+## 12. Production deployment decisions (Phase 8.6)
+
+These are calls made on 2026-04-29 while standing up the first real deploy (Lambda + Neon + Cloudflare Pages). Each was forced by a real failure mode the local dev loop didn't catch.
+
+### 12.1 Single CORS source: Fastify owns it, AWS layer disabled ⚙
+- **What:** `sst.config.ts` sets `url: { cors: false }` on the Lambda Function URL. CORS headers are produced exclusively by `@fastify/cors` inside the Fastify app.
+- **Why:** First deploy, browsers rejected every cross-origin request with `'Access-Control-Allow-Origin' header contains multiple values 'https://kasrat.pages.dev, *', but only one is allowed.` AWS was injecting `*`; Fastify was reflecting `https://kasrat.pages.dev`.
+- **Justification:**
+  - Two CORS layers means two places to keep in sync. Picking one source eliminates the class.
+  - **Fastify, not AWS**, because Fastify runs identically locally and in prod — same headers everywhere, no surprises when the dev/prod environments diverge.
+  - The AWS layer's value would be saving a Lambda invocation on `OPTIONS` preflights. At pilot scale this is ~zero cents/month.
+  - Tradeoff: every preflight now wakes Lambda. If/when traffic grows, we may flip the call (AWS owns CORS, Fastify is silent). For now, parity wins.
+
+### 12.2 Prisma client distributed via SST `copyFiles`, not Lambda Layers or Data Proxy ⚙
+- **What:** `sst.config.ts` `copyFiles` block lifts `node_modules/.prisma/client` (the generated implementation, not the public `@prisma/client` facade) verbatim into the Lambda bundle, alongside `schema.prisma`. The `binaryTargets = ["native", "rhel-openssl-3.0.x"]` directive in `schema.prisma` ensures the Linux engine binary is generated locally and carried in.
+- **Why:** First deploy, Lambda cold-started with `Error: @prisma/client did not initialize yet. Please run "prisma generate" and try to import it again.` esbuild had bundled the public facade but not the hidden `.prisma/client` directory; SST's `nodejs.install` only handles npm packages, not generated dirs.
+- **Justification:**
+  - **Alternative 1 — Prisma Data Proxy** (Prisma's hosted query gateway). Requires a paid Prisma plan, plus an extra network hop per query. Deferred — works for us today, can revisit if Lambda cold starts get heavy.
+  - **Alternative 2 — Lambda Layers.** A Layer with `@prisma/client` + the engine could be shared across multiple Lambdas. We have one Lambda, so the layer abstraction adds setup without payoff.
+  - **Alternative 3 — `prisma generate` in a deploy hook.** Would mean SST has to run `prisma generate` against the deploy-time `schema.prisma`. SST v4 doesn't have a clean hook for this; copyFiles is one config block.
+  - The chosen approach is ~10 lines of SST config and works today. Cold-start overhead is the engine binary (~25 MB unzipped) which Lambda caches per warm container — only the first request after idle pays the load cost.
+
+### 12.3 `awsLambdaFastify(app)` wraps the Fastify instance before any `app.ready()` ⚙
+- **What:** `lambda.ts` builds the app, then immediately wraps it with `awsLambdaFastify`. The wrapper handles `app.ready()` internally on first invocation.
+- **Why:** First deploy, after the Prisma fix landed, Lambda threw `FastifyError: The decorator 'awsLambda' has been added after start!`. `@fastify/aws-lambda` adds a `request.awsLambda` decorator that Fastify rejects post-`ready()`.
+- **Justification:** The Fastify lifecycle is "register all decorators → call `ready()` → start serving." Calling `app.ready()` ourselves before wrapping put us in the second phase, so the wrapper's `decorateRequest` call failed. Removing the explicit `await app.ready()` fixed it cleanly. Documented in `lambda.ts` so the next person reading the file understands why the order matters.
+
+### 12.4 Seed script is parameterizable, scoped to one owner, never bulk-deletes ⚙
+- **What:** `prisma/seed.ts` reads `SEED_CLERK_USER_ID` and friends from env; upserts the Owner by `clerkUserId`; deletes only that owner's existing gyms (and dependent rows in dependency order); generates fresh IDs via `newId()`.
+- **Why:** The original seed used `prisma.gym.deleteMany()` etc. across every table, which is fine for a private SQLite `dev.db` but catastrophic on a shared production database — running it would have wiped every owner's data.
+- **Justification:**
+  - **Per-owner cleanup** preserves multi-tenant isolation. Other owners' data is invisible to the seed.
+  - **Upsert by `clerkUserId`** preserves the JIT-created Owner row (the user's Clerk ID is the unique discriminator); we only fill in the mirror fields (name, email).
+  - **Random IDs via `newId()`** prevent UNIQUE collisions when multiple owners are seeded into the same DB. Hard-coded IDs (`'gym-1'`, `'member-1'`) only work for a single-owner DB.
+  - The local-dev defaults (`SEED_CLERK_USER_ID='seed_user_anand'`, etc.) keep the existing dev workflow unchanged.
+
+---
+
+*Last updated 2026-04-29. Add new decisions at the bottom of the relevant section, with a short What / Why / Justification block.*

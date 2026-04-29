@@ -863,13 +863,24 @@ Each screen, when built, should be fully functional against the mock API — cli
 
 ---
 
-## 13\. What's next after Phase 6
+## 13\. Roadmap (current state)
 
-Phase 7: build backend. The contract is already defined in `packages/shared/types.ts`. Backend implements endpoints that conform to it. UI swaps `mockApi` for `realApi` in one place.
+✅ **Phase 7 — Backend foundation \+ API spine.** Done. Fastify 5 \+ Prisma 5 \+ Zod, contract from `packages/shared/types.ts`. UI swapped `mockApi` for `realApi` via a one-line env-var switch.
 
-Phase 8: deploy to AWS via SST. First deploy is the riskiest moment — schedule a focused session for it.
+✅ **Phase 8 — Wire UI to real APIs.** Done. `VITE_USE_REAL_API=1` on the frontend, fetch wrapper authenticates via Clerk-issued JWTs.
 
-Phase 9: pilot at family's gym in Sagar. Sit at the front desk for a day before launch. Watch how it's actually used. Fix what breaks.
+✅ **Phase 8.5 — Real auth (Clerk) \+ multi-tenancy.** Done. Owner JIT-creation on first authenticated request, every protected route scoped by `gymId`. See [DECISIONS.md §5](./DECISIONS.md).
+
+✅ **Phase 8.6 — Production deploy.** Done. Backend on AWS Lambda \+ API Gateway via SST in `ap-south-1` ([Function URL](https://lckqktk3eugpdfpdw75pty3nia0wfpfi.lambda-url.ap-south-1.on.aws/)); database on Neon Postgres in `ap-southeast-1`; frontend on [Cloudflare Pages](https://kasrat.pages.dev). CI runs typecheck \+ lint \+ Vitest on every PR. See [REPORT.md §11](./REPORT.md) for the deploy procedure and [DECISIONS.md §12](./DECISIONS.md) for deploy-time architectural calls.
+
+🔵 **Phase 9 — Pre-launch pilot at family's gym in Sagar (current).** Sit at the front desk for a day before any printed-poster rollout. Watch how it's actually used. Fix what breaks.
+
+### Items still on the to-do list
+
+- **Buy `kasrat.in`** before printing the first physical QR poster. See [DECISIONS.md §8.3](./DECISIONS.md).
+- **Migrate Clerk Development instance → Production instance** on `kasrat.in`. Gated on the domain.
+- **Implement slug uniqueness live check + reserved-slug list.** Decided in [DECISIONS.md §10 Q9](./DECISIONS.md), not yet coded.
+- **Add Sentry to frontend** (decided in DECISIONS §10 Q8, code not yet wired).
 
 ---
 
