@@ -14,12 +14,12 @@ If you only read one section, read **§1 (TL;DR)** then **§5 (How to run)**.
   Sagar, MP. Mobile-first (~375px). Full spec in [SPEC.md](./SPEC.md).
 - npm-workspaces monorepo with three packages: `shared`, `frontend`, `backend`.
 - Frontend: **React 18 + Vite 5 + Tailwind 3 + i18next**. All 9 SPEC screens implemented.
-- Backend: **Fastify 5 + Prisma 5 (SQLite locally) + Zod**. Full REST API.
+- Backend: **Fastify 5 + Prisma 5 + Zod**, Postgres via Neon (dev branch locally, main in prod). Full REST API.
 - The frontend can run **standalone** (uses an in-memory mock layer) or
   **against the real backend** by setting one env var. A 3-line switch
   in `src/lib/api.ts` chooses between them.
 - Everything type-checks (`npx tsc --noEmit` clean in both packages) and
-  end-to-end works against SQLite.
+  end-to-end works against a Neon dev branch.
 
 ---
 
@@ -78,7 +78,7 @@ kasrat/
     │           ├── auth.tsx
     │           ├── setup.tsx
     │           └── public-gym.tsx
-    └── backend/              # Fastify API (Prisma + SQLite)
+    └── backend/              # Fastify API (Prisma + Postgres on Neon)
         ├── package.json
         ├── tsconfig.json
         ├── .env.example      # copy to .env to run locally
@@ -115,7 +115,7 @@ kasrat/
 │       │                  │  │    │  Prisma client              │
 │       ▼                  │  │    │       │                     │
 │  in-memory mockState     │  │    │       ▼                     │
-│  (mockData.ts)           │  │    │  SQLite (dev.db)            │
+│  (mockData.ts)           │  │    │  Neon Postgres (dev branch) │
 └──────────────────────────┘  │    └─────────────────────────────┘
                               │
             VITE_USE_REAL_API=1 toggles realApi
@@ -127,7 +127,7 @@ the **same argument and return types** (from `@gym-app/shared/types`).
 The route components don't know which one they're talking to — they just
 import `api` from `src/lib/api.ts`. This is why the swap was a one-line
 switch: add `VITE_USE_REAL_API=1` to your env and the frontend reads
-from SQLite via the backend.
+from your Neon dev branch via the backend.
 
 ---
 
@@ -146,36 +146,50 @@ npm -v     # 10.x or newer
 
 ## 5. How to run — first time
 
+Local dev points at a **Neon `dev` branch** so it shares the production
+database engine (Postgres) without sharing production data. Branches in
+Neon are git-like — copy-on-write off `main`, instant to create, free on
+the free tier, idle-suspend the moment you stop using them.
+
 ```bash
 # 1. Clone
 git clone https://github.com/anandthakur1312/kasrat.git
 cd kasrat
 
-# 2. Install (root install installs all workspaces)
+# 2. Install
 npm install
 
-# 3. Set up Clerk (free): https://dashboard.clerk.com → Create application
-#    - Name it "Kasrat", enable Email + Google sign-in
-#    - From the API Keys page, copy:
+# 3. Sign up at https://neon.tech (free).
+#    - Create a project named "kasrat" in region ap-southeast-1 (Singapore)
+#      or ap-south-1 (Mumbai) if your tier supports it.
+#    - In the project, go to Branches → Create branch → name it "dev",
+#      parent = "main", "Include data up to current state" (default).
+#    - Open the dev branch → Connection details → copy the *pooled* URL
+#      (the one with "-pooler" in the hostname).
+
+# 4. Sign up for Clerk: https://dashboard.clerk.com → Create application.
+#    - Name "Kasrat", enable Email + Google sign-in.
+#    - From API Keys, copy:
 #        VITE_CLERK_PUBLISHABLE_KEY (starts with pk_test_)
 #        CLERK_SECRET_KEY           (starts with sk_test_)
 
-# 4. Configure env files
+# 5. Configure env files
 cp packages/backend/.env.example  packages/backend/.env
 cp packages/frontend/.env.example packages/frontend/.env
-# Then edit both .env files and paste the keys from step 3.
+#    - In packages/backend/.env paste DATABASE_URL = your Neon dev branch
+#      pooled URL, and CLERK_SECRET_KEY.
+#    - In packages/frontend/.env paste VITE_CLERK_PUBLISHABLE_KEY.
 
-# 5. Bootstrap the local DB (idempotent)
+# 6. Bootstrap the local DB
 npm run setup:local
-# This runs: install + prisma generate + prisma migrate dev + db seed.
-# Re-run any time to recreate dev.db from scratch — the seed uses upsert
-# so existing rows update in place, but if you rm dev.db first you get a
-# fresh state.
+#    Runs: install + prisma generate + prisma migrate deploy + db seed.
+#    "migrate deploy" applies any committed migrations to your dev branch
+#    without prompting; the seed uses upsert so re-running is idempotent.
 ```
 
-The seed populates `packages/backend/prisma/dev.db` with one gym
-("Gungun Fitness Club", slug `gungun`), 4 plans, 3 members, 6
-memberships, and 5 payments — matching the SPEC §9 fixtures exactly.
+The seed populates your Neon dev branch with one gym ("Gungun Fitness
+Club", slug `gungun`), 4 plans, 3 members, 6 memberships, and 5 payments
+— matching the SPEC §9 fixtures exactly.
 
 The seed Owner has `clerkUserId: 'seed_user_anand'` which is *not* a
 real Clerk user — the first time you sign in via Clerk and hit any
@@ -183,8 +197,17 @@ authed endpoint, a fresh Owner row gets JIT-created with your real
 `clerkUserId`. The seed Gungun fixture is detached (its ownerId still
 points at the seed Owner) and serves as a public-page demo at
 `/g/gungun`. To make Gungun yours after signing up, either change
-`Gym.ownerId` in `dev.db` to your new owner's id, or just create a new
-gym via the /setup flow.
+`Gym.ownerId` to your new owner's id, or just create a new gym via the
+`/setup` flow.
+
+### 5.0.1 Resetting your dev branch to a clean state
+
+```bash
+# Easiest path: in the Neon UI, "Reset from parent" on the dev branch.
+# This resets the dev branch's data to whatever main currently has, in
+# under a second. Then re-run `npm run db:seed --workspace packages/backend`
+# if you want the SPEC §9 fixtures back.
+```
 
 ### 5.1 Run frontend in mock mode (no backend needed)
 
@@ -216,7 +239,7 @@ VITE_USE_REAL_API=1 npm run dev --workspace packages/frontend
 ```
 
 The frontend now reads/writes via `fetch` to the Fastify backend, and
-all writes persist to `dev.db`.
+all writes persist to your Neon dev branch.
 
 If your backend is on a different host, set `VITE_API_URL` in
 `packages/frontend/.env` instead of inline.
@@ -242,9 +265,8 @@ npm run build --workspace packages/backend
 node packages/backend/dist/server.js
 ```
 
-For a real deploy you'd switch the Prisma datasource from SQLite to
-Postgres (one line in `packages/backend/prisma/schema.prisma`) and set
-`DATABASE_URL` in the backend env.
+For a real deploy, set `DATABASE_URL` to the Neon `main` branch URL —
+either via SST secrets (Lambda) or your platform's env var system.
 
 ---
 
@@ -406,8 +428,9 @@ Date strings travelling between client and server are YYYY-MM-DD and
 - **Fastify 5** for the HTTP server.
 - **Prisma 5** for the database client + migrations.
 - **Zod** for request body validation.
-- **SQLite** for local dev (one file: `packages/backend/prisma/dev.db`).
-  Switch to Postgres for production.
+- **Postgres** via Neon, both locally (a `dev` branch) and in prod (the
+  `main` branch). Branches are git-like: copy-on-write, instant to
+  create, scale to zero when idle. Free tier covers everything we need.
 
 ### 7.2 Schema — `prisma/schema.prisma`
 
@@ -423,7 +446,9 @@ Membership 1 ─ ∞ Payment
 ```
 
 Date-only fields are stored as `String` in `YYYY-MM-DD` format —
-SQLite has no DATE type and we want the wire format to match anyway.
+We want the wire format and the stored format to match (same string in
+client → server → DB → server → client) so timezone arithmetic happens
+in exactly one place.
 Booleans, integers and timestamps use Prisma's native types.
 
 ### 7.3 Routes — `src/server.ts`
@@ -605,22 +630,25 @@ to confirm fixtures still produce the canary numbers (7 / 3 / 42).
 ### 9.4 Data desync between mock and real layer
 
 They're independent. The mock layer always seeds the **same** initial
-state from `mockData.ts`. The real layer's state is whatever's in
-`dev.db`. Reset:
+state from `mockData.ts`. The real layer's state is whatever's on your
+Neon dev branch. Reset:
 
 ```bash
-rm packages/backend/prisma/dev.db
-npm run prisma:migrate --workspace packages/backend
-npm run db:seed        --workspace packages/backend
+# Easiest: in the Neon UI, go to Branches → dev → "Reset from parent".
+# Then re-seed:
+npm run db:seed --workspace packages/backend
 ```
 
-### 9.5 Inspect the SQLite DB directly
+### 9.5 Inspect the DB directly
 
 ```bash
-sqlite3 packages/backend/prisma/dev.db
-> .tables
-> SELECT * FROM Member;
-> SELECT * FROM Membership WHERE memberId = 'member-1';
+# psql (any libpq client works)
+psql "$DATABASE_URL"
+> \dt                              -- list tables
+> SELECT * FROM "Member";          -- note the double-quotes; Prisma uses
+                                   -- mixed-case table names which Postgres
+                                   -- treats as case-sensitive identifiers
+> SELECT * FROM "Membership" WHERE "memberId" = 'member-1';
 ```
 
 Or use Prisma Studio:
@@ -690,7 +718,7 @@ The locked architecture (see [DECISIONS.md](./DECISIONS.md)):
 
 - **Frontend** → Cloudflare Pages
 - **Backend** → AWS Lambda + API Gateway via SST, ap-south-1 (Mumbai)
-- **Database** → Neon Postgres (ap-south-1)
+- **Database** → Neon Postgres (ap-southeast-1 Singapore — Mumbai isn't on Neon free tier yet)
 - **Auth** → Clerk (production keys)
 
 ### 11.1 One-time setup (you do this once per fresh laptop)
@@ -703,43 +731,16 @@ aws configure                                       # paste access key + secret
 aws sts get-caller-identity                         # confirms creds work
 
 # 2. Sign up at neon.tech (free), create a project named "kasrat" in
-#    region "AWS / ap-south-1 (Mumbai)". Copy the pooled connection URL
-#    (looks like postgres://user:pass@ep-xxx-pooler.../neondb?sslmode=require).
+#    region "AWS / ap-southeast-1 (Singapore)". Copy the pooled connection
+#    URL of the *main* branch — that's the production DB. Then create a
+#    second branch named "dev" (Branches → Create branch → off main); its
+#    URL goes in your local packages/backend/.env.
 
 # 3. Sign up / log in at cloudflare.com. Note the Account ID from the
 #    sidebar of any zone or the dashboard home page.
 ```
 
-### 11.2 Switch Prisma to Postgres before the first backend deploy
-
-The dev DB uses SQLite for laptop convenience; production needs Postgres.
-
-```prisma
-// packages/backend/prisma/schema.prisma
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
-generator client {
-  provider      = "prisma-client-js"
-  binaryTargets = ["native", "rhel-openssl-3.0.x"]   // native + Lambda
-}
-```
-
-Then regenerate migrations against the Neon connection:
-
-```bash
-rm -rf packages/backend/prisma/migrations
-DATABASE_URL="postgres://...neondb?sslmode=require" \
-  npm run prisma:migrate --workspace packages/backend -- --name init
-```
-
-(The migration files become Postgres-flavored DDL — different from the
-existing SQLite migration. Commit these new files; never mix SQLite and
-Postgres migration history in the same folder.)
-
-### 11.3 Deploy the backend (Lambda)
+### 11.2 Deploy the backend (Lambda)
 
 ```bash
 # Set secrets once per stage. Stored in AWS Systems Manager Parameter Store.
@@ -757,7 +758,7 @@ npm run deploy
 # https://<id>.lambda-url.ap-south-1.on.aws). Copy it for the frontend env.
 ```
 
-### 11.4 Deploy the frontend (Cloudflare Pages)
+### 11.3 Deploy the frontend (Cloudflare Pages)
 
 In the Cloudflare dashboard:
 
@@ -768,14 +769,14 @@ In the Cloudflare dashboard:
    - Root directory: leave blank (we build from repo root)
 3. Environment variables (Production):
    - `VITE_USE_REAL_API=1`
-   - `VITE_API_URL=<Lambda Function URL from §11.3>`
+   - `VITE_API_URL=<Lambda Function URL from §11.2>`
    - `VITE_CLERK_PUBLISHABLE_KEY=<pk_live_...>`
 4. Save & Deploy.
 
 Cloudflare auto-builds on every push to `master` and creates preview URLs
 for every PR.
 
-### 11.5 First-time signup against the deployed stack
+### 11.4 First-time signup against the deployed stack
 
 1. Open `https://kasrat.pages.dev` (or `https://kasrat.in` once the
    custom domain is wired — see [DECISIONS.md §8.3](./DECISIONS.md)).
@@ -784,7 +785,7 @@ for every PR.
    and creates the Gym + Plans.
 4. Land on `/` → empty members list.
 
-### 11.6 Re-deploys
+### 11.5 Re-deploys
 
 ```bash
 # After a backend code change:
@@ -799,7 +800,7 @@ npm run deploy
 git push origin master   # Cloudflare auto-deploys
 ```
 
-### 11.7 Tearing down a non-prod stage
+### 11.6 Tearing down a non-prod stage
 
 ```bash
 npx sst remove --stage <stage>
@@ -841,9 +842,10 @@ The grace period is per-gym in the DB (`Gym.gracePeriodDays`, default
 ### 12.4 Re-seed the DB from scratch
 
 ```bash
-rm -f packages/backend/prisma/dev.db
-npm run prisma:migrate --workspace packages/backend
-npm run db:seed        --workspace packages/backend
+# In Neon UI: Branches → dev → "Reset from parent" (instant, no data loss
+# beyond your local dev branch).
+npm run prisma:deploy --workspace packages/backend
+npm run db:seed       --workspace packages/backend
 ```
 
 ---
@@ -878,12 +880,14 @@ npm run dev              --workspace packages/backend   # tsx watch src/server.t
 npm run build            --workspace packages/backend   # tsc → dist/
 npm run start            --workspace packages/backend   # node dist/server.js
 npm run prisma:generate  --workspace packages/backend   # regen Prisma client
-npm run prisma:migrate   --workspace packages/backend   # create + apply migration
+npm run prisma:migrate   --workspace packages/backend   # create new migration (dev)
+npm run prisma:deploy    --workspace packages/backend   # apply pending migrations
 npm run db:push          --workspace packages/backend   # sync schema (no migration)
 npm run db:seed          --workspace packages/backend   # seed fixtures
 npm run test             --workspace packages/backend   # vitest run
 ```
 
 Env vars (`packages/backend/.env`, copy from `.env.example`):
-- `DATABASE_URL` — Prisma datasource URL (default `file:./dev.db`).
+- `DATABASE_URL` — Neon Postgres pooled URL for your `dev` branch.
 - `PORT`         — Fastify port (default `3001`).
+- `CLERK_SECRET_KEY` — Clerk dev/test secret key (sk_test_…).

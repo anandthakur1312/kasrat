@@ -79,10 +79,14 @@
 - **Why:** Fastify is faster and lighter than Express with better TypeScript support; Prisma's type generation matches the contract-first approach.
 - **Justification:** Fastify's `setErrorHandler` + Zod gives us a clean error pipeline (validation → 400, business → 4xx, unknown → 500) in ~10 lines. Keeping all routes in one file is intentional — when there are <30 endpoints, splitting hurts more than it helps.
 
-### 2.5 Database: Postgres on Neon (prod) / SQLite (dev) 🔒
-- **What:** Production target is Neon serverless Postgres; local dev uses SQLite via Prisma's identical query API.
-- **Why:** Neon scales to zero (free tier covers the pilot indefinitely); SQLite gives a one-file dev DB with no setup.
-- **Justification:** Neon supports Postgres RLS, point-in-time recovery, and branching — features we can grow into. SQLite locally avoids forcing every contributor to install Postgres just to type-check. Switching the Prisma datasource is one line in `schema.prisma` plus rerunning migrations.
+### 2.5 Database: Postgres on Neon, everywhere 🔒
+- **What:** Production target is Neon serverless Postgres in `ap-southeast-1` (Singapore — Mumbai is not on Neon's free tier as of 2026-04-29). Local dev uses a separate **Neon `dev` branch** off `main`, accessed from the laptop via `packages/backend/.env`. No SQLite anywhere.
+- **Why:** Dev/prod parity beats laptop convenience. Postgres ≠ SQLite on dates, JSON, sequences, RLS, and string handling — having both was a drift trap.
+- **Justification:**
+  - **Single schema, single migration history.** SQLite migrations are SQLite-flavored DDL; Postgres migrations are Postgres-flavored. Maintaining both meant every schema change was applied twice and could diverge in subtle ways.
+  - **Neon branches make the "where do I get a local DB" problem vanish.** Branches off `main` are copy-on-write — instant to create, free, idle-suspend in 5 min. A contributor clones the repo, signs up for Neon free, creates a `dev` branch, pastes the URL in `.env`, runs `npm run setup:local`. Done.
+  - **Internet dependency for local dev is the real tradeoff.** Acceptable for current single-developer use. If/when this becomes painful (CI without Neon access, demos on a flight), we'll add Docker Compose Postgres as an alternative — see DECISIONS.md §10 Q3 history; the option was deliberately deferred, not lost.
+  - Switching to Singapore from the originally-planned Mumbai costs ~50 ms RTT per query. At our query volume (single-digit per page-load), invisible.
 
 ### 2.6 Auth: Clerk (managed) 🔒
 - **What:** Clerk handles all login flows (Google OAuth + Email/Password), session management, password reset, email verification.
