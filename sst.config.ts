@@ -38,7 +38,13 @@ export default $config({
       runtime: "nodejs20.x",
       timeout: "15 seconds",
       memory: "512 MB",
-      url: true,
+      // Disable AWS Function URL CORS (default would inject `*`); the
+      // Fastify app is already the source of CORS headers via
+      // @fastify/cors, and two layers produce duplicate
+      // Access-Control-Allow-Origin headers which browsers reject.
+      url: {
+        cors: false,
+      },
       link: [databaseUrl, clerkSecretKey],
       environment: {
         DATABASE_URL: databaseUrl.value,
