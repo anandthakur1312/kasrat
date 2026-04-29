@@ -10,6 +10,23 @@
     "save": "Save",
     "cancel": "Cancel"
   },
+  "timings": {
+    "days": "Days",
+    "daysPlaceholder": "Mon–Sat",
+    "hours": "Hours",
+    "hoursPlaceholder": "6:00 AM – 10:00 AM",
+    "addLine": "Add line",
+    "removeLine": "Remove timing line",
+    "preview": "Public page preview",
+    "emptyPreview": "No timings yet",
+    "defaults": {
+      "weekdayDays": "Mon–Sat",
+      "weekdayMorning": "Morning: 6:00 AM – 10:00 AM",
+      "weekdayEvening": "Evening: 5:00 PM – 9:00 PM",
+      "sundayDays": "Sunday",
+      "sundayHours": "Closed"
+    }
+  },
   "members": {
     "title": "Members",
     "search": "Search by name or phone",
@@ -201,16 +218,6 @@
     "publicUrl": "Public URL",
     "address": "Address",
     "timings": "Timings",
-    "timing": {
-      "days": "Days",
-      "daysPlaceholder": "Mon-Sat",
-      "hours": "Hours",
-      "hoursPlaceholder": "6 AM - 10 AM, 5 PM - 9 PM",
-      "addLine": "Add line",
-      "removeLine": "Remove timing line",
-      "preview": "Public page preview",
-      "emptyPreview": "No timings yet"
-    },
     "contactPhone": "Contact phone",
     "upiId": "UPI ID",
     "plan": {
