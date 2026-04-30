@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Plan } from '@gym-app/shared/types';
 import { api } from '@/lib/api';
 import { formatCurrency } from '@/lib/format';
+import { NavBackHome } from '@/components/nav-back-home';
 import { cn } from '@/lib/utils';
 
 function todayISO(): string {
@@ -68,14 +68,7 @@ export default function AddMemberRoute() {
   return (
     <form onSubmit={handleSubmit} className="min-h-screen bg-background pb-24 flex flex-col">
       <header className="flex items-center gap-1 border-b border-border/60 px-2 py-2">
-        <button
-          type="button"
-          aria-label={t('common.back')}
-          onClick={() => navigate(-1)}
-          className="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-secondary"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
+        <NavBackHome />
         <h1 className="text-[15px] font-medium">{t('new.title')}</h1>
       </header>
 

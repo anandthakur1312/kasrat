@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
+import { NavBackHome } from '@/components/nav-back-home';
 import { toast } from 'sonner';
 import type { Plan } from '@gym-app/shared/types';
 import { api } from '@/lib/api';
@@ -9,7 +9,6 @@ import { cn } from '@/lib/utils';
 
 export default function PlansRoute() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewForm, setShowNewForm] = useState(false);
@@ -60,14 +59,7 @@ export default function PlansRoute() {
   return (
     <div className="min-h-screen bg-background pb-12">
       <header className="flex items-center gap-1 border-b border-border/60 px-2 py-2">
-        <button
-          type="button"
-          aria-label={t('common.back')}
-          onClick={() => navigate(-1)}
-          className="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-secondary"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
+        <NavBackHome />
         <h1 className="text-[15px] font-medium">{t('plans.title')}</h1>
       </header>
 
