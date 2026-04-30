@@ -8,10 +8,11 @@ import type {
   PublicGymResponse,
 } from '@gym-app/shared/types';
 import { prisma } from './db.js';
-import { addDays, addMonths, iso, parseDate, todayLocal } from './lib/dates.js';
+import { addMonths, iso, parseDate, todayLocal } from './lib/dates.js';
 import { newId } from './lib/ids.js';
 import { computeStatus } from './lib/status.js';
 import { clerkAuth, getAuthenticatedOwner, getOwnerGym } from './lib/auth.js';
+import { planMembershipAction } from './lib/payment-policy.js';
 import {
   toGym,
   toMember,
@@ -267,47 +268,39 @@ export async function buildApp(): Promise<FastifyInstance> {
       (m) => m.startDate <= today && today < m.endDate && m.status === 'active',
     );
 
+    const action = planMembershipAction({
+      activeNow: activeNow
+        ? {
+            id: activeNow.id,
+            startDate: activeNow.startDate,
+            endDate: activeNow.endDate,
+            amountPaid: activeNow.amountPaid,
+          }
+        : null,
+      plan: { id: plan.id, durationMonths: plan.durationMonths, price: plan.price },
+      amount: body.amount,
+      paidOn: body.paidOn,
+    });
+
     let membershipId: string;
-    if (activeNow && activeNow.amountPaid === 0) {
+    if (action.kind === 'updateUnpaid') {
       await prisma.membership.update({
-        where: { id: activeNow.id },
-        data: { amountPaid: body.amount },
+        where: { id: action.membershipId },
+        data: action.data,
       });
-      membershipId = activeNow.id;
-    } else if (activeNow) {
-      const start = addDays(parseDate(activeNow.endDate), 1);
-      const end = addMonths(start, plan.durationMonths);
-      const m = await prisma.membership.create({
-        data: {
-          id: newId('membership'),
-          memberId: member.id,
-          planId: plan.id,
-          startDate: iso(start),
-          endDate: iso(end),
-          amountDue: plan.price,
-          amountPaid: body.amount,
-          customPrice: body.amount !== plan.price ? body.amount : null,
-          status: 'active',
-        },
-      });
-      membershipId = m.id;
+      membershipId = action.membershipId;
     } else {
-      const start = parseDate(body.paidOn);
-      const end = addMonths(start, plan.durationMonths);
-      const m = await prisma.membership.create({
+      // Both queueRenewal and createFresh insert a new Membership row;
+      // they only differ in startDate, which the policy already computed.
+      const created = await prisma.membership.create({
         data: {
           id: newId('membership'),
           memberId: member.id,
-          planId: plan.id,
-          startDate: iso(start),
-          endDate: iso(end),
-          amountDue: plan.price,
-          amountPaid: body.amount,
-          customPrice: body.amount !== plan.price ? body.amount : null,
           status: 'active',
+          ...action.data,
         },
       });
-      membershipId = m.id;
+      membershipId = created.id;
     }
 
     const payment = await prisma.payment.create({
