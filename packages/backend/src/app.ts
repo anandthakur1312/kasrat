@@ -14,6 +14,7 @@ import { newId } from './lib/ids.js';
 import { computeStatus } from './lib/status.js';
 import { clerkAuth, getAuthenticatedOwner, getOwnerGym } from './lib/auth.js';
 import { planMembershipAction } from './lib/payment-policy.js';
+import { toErrorResponse } from './lib/http-errors.js';
 import {
   toGym,
   toMember,
@@ -99,10 +100,12 @@ export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({ logger: true });
   await app.register(cors, { origin: true });
 
-  app.setErrorHandler((err, _req, reply) => {
-    const status = (err as { statusCode?: number }).statusCode ?? 500;
-    const code = (err as { code?: string }).code;
-    reply.code(status).send({ error: err.message, ...(code ? { code } : {}) });
+  app.setErrorHandler((err, req, reply) => {
+    const response = toErrorResponse(err);
+    if (response.shouldLog) {
+      req.log.error({ err }, response.body.code ?? 'request failed');
+    }
+    reply.code(response.status).send(response.body);
   });
 
   // Public endpoints (no Clerk auth required).
@@ -113,7 +116,10 @@ export async function buildApp(): Promise<FastifyInstance> {
     await clerkAuth(req);
   });
 
-  app.get('/health', async () => ({ ok: true }));
+  app.get('/health', async () => {
+    await prisma.$queryRaw`SELECT 1`;
+    return { ok: true };
+  });
 
   // ---- members ----
   app.get('/members', async (req): Promise<MembersListResponse> => {
