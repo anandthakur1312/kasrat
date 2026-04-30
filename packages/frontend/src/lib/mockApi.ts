@@ -307,6 +307,12 @@ export const mockApi = {
     const scheduledUnpaid = existing.find(
       (m) => m.startDate > today && m.status !== 'cancelled' && m.amountPaid === 0 && m.amountDue > 0,
     );
+    const latestNonCancelledEnd = existing
+      .filter((m) => m.status !== 'cancelled')
+      .reduce<string | null>(
+        (max, m) => (max === null || m.endDate > max ? m.endDate : max),
+        null,
+      );
 
     let membership: Membership;
 
@@ -326,9 +332,10 @@ export const mockApi = {
       unpaidToUpdate.customPrice = req.amount !== plan.price ? req.amount : null;
       unpaidToUpdate.amountPaid = req.amount;
       membership = unpaidToUpdate;
-    } else if (activeNow) {
-      // Active membership is paid; queue a new one starting day after current ends.
-      const start = addDays(parseDate(activeNow.endDate), 1);
+    } else if (latestNonCancelledEnd && latestNonCancelledEnd > req.paidOn) {
+      // Queue after the latest future-ending membership. endDate is exclusive,
+      // so starting on that date keeps coverage continuous without overlap.
+      const start = parseDate(latestNonCancelledEnd);
       const end = addMonths(start, plan.durationMonths);
       membership = {
         id: nextId('membership'),
