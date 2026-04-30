@@ -145,7 +145,7 @@ export default function SetupRoute() {
               type="text"
               value={upiId}
               onChange={(e) => setUpiId(e.target.value)}
-              placeholder="yourname@bank"
+              placeholder={t('setup.upiPlaceholder')}
               className="w-full h-10 rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
             />
           </Field>
@@ -189,7 +189,8 @@ function PlanTile({
   onToggle: () => void;
   onPriceChange: (price: number) => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.resolvedLanguage ?? i18n.language;
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(String(plan.price));
 
@@ -246,7 +247,7 @@ function PlanTile({
             )}
           >
             {t('common.currency')}
-            {formatCurrency(plan.price)}
+            {formatCurrency(plan.price, language)}
           </button>
         )}
       </div>

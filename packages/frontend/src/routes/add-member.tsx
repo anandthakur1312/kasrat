@@ -17,7 +17,8 @@ function todayISO(): string {
 }
 
 export default function AddMemberRoute() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.resolvedLanguage ?? i18n.language;
   const navigate = useNavigate();
 
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -129,7 +130,7 @@ export default function AddMemberRoute() {
                     )}
                   >
                     {t('common.currency')}
-                    {formatCurrency(p.price)}
+                    {formatCurrency(p.price, language)}
                   </span>
                 </button>
               ))}

@@ -160,7 +160,8 @@ function DetailBody({
   data: MemberDetailResponse;
   onRecordPayment: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.resolvedLanguage ?? i18n.language;
   const { member, currentMembership, plan, status, daysOverdue, daysRemaining, amountDue, paymentHistory } = data;
 
   const recentPayments = paymentHistory.slice(0, 5);
@@ -175,7 +176,7 @@ function DetailBody({
           <div className="text-lg font-medium leading-tight">{member.name}</div>
           <div className="text-sm text-muted-foreground">{member.phone}</div>
           <div className="text-xs text-muted-foreground mt-0.5">
-            {t('detail.joined', { date: formatDate(member.joinDate) })}
+            {t('detail.joined', { date: formatDate(member.joinDate, language) })}
           </div>
         </div>
       </section>
@@ -202,8 +203,8 @@ function DetailBody({
               <li key={m.id} className="px-3 py-2.5 bg-card text-sm">
                 {t('detail.queued.range', {
                   plan: m.planName,
-                  start: formatDate(m.startDate),
-                  end: formatDate(m.endDate),
+                  start: formatDate(m.startDate, language),
+                  end: formatDate(m.endDate, language),
                 })}
               </li>
             ))}
@@ -281,7 +282,8 @@ function StatusCard({
   planName: string | null;
   endDate: string | null;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.resolvedLanguage ?? i18n.language;
 
   const tone =
     status === 'overdue' || status === 'payment_pending'
@@ -297,17 +299,17 @@ function StatusCard({
   if (status === 'overdue') {
     header = t('detail.status.overdue');
     primary = t('detail.status.days', { count: daysOverdue ?? 0 });
-    secondary = endDate ? t('detail.status.expiredOn', { date: formatDate(endDate) }) : '';
+    secondary = endDate ? t('detail.status.expiredOn', { date: formatDate(endDate, language) }) : '';
   } else if (status === 'payment_pending') {
     header = t('detail.status.paymentPending');
   } else if (status === 'expiring') {
     header = t('detail.status.expiring');
     primary = t('detail.status.days', { count: daysRemaining ?? 0 });
-    secondary = endDate ? t('detail.status.endsOn', { date: formatDate(endDate) }) : '';
+    secondary = endDate ? t('detail.status.endsOn', { date: formatDate(endDate, language) }) : '';
   } else if (status === 'active') {
     header = t('detail.status.active');
     primary = t('detail.status.days', { count: daysRemaining ?? 0 });
-    secondary = endDate ? t('detail.status.endsOn', { date: formatDate(endDate) }) : '';
+    secondary = endDate ? t('detail.status.endsOn', { date: formatDate(endDate, language) }) : '';
   }
 
   return (
@@ -321,7 +323,7 @@ function StatusCard({
       {amountDue !== null && (
         <div className="text-sm font-medium mt-2">
           {t('common.currency')}
-          {formatCurrency(amountDue)}
+          {formatCurrency(amountDue, language)}
         </div>
       )}
     </div>
@@ -341,19 +343,20 @@ function PaymentRow({
   recordedByName: string;
   amount: number;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.resolvedLanguage ?? i18n.language;
   return (
     <li className="flex items-center justify-between gap-3 px-3 py-2.5 bg-card">
       <div className="min-w-0">
         <div className="text-sm font-medium truncate">{planName}</div>
         <div className="text-xs text-muted-foreground truncate">
-          {formatDate(paidOn)} · {t(`payment.method.${method}`)} ·{' '}
+          {formatDate(paidOn, language)} · {t(`payment.method.${method}`)} ·{' '}
           {t('detail.history.recordedBy', { name: recordedByName })}
         </div>
       </div>
       <div className="text-sm font-medium whitespace-nowrap">
         {t('common.currency')}
-        {formatCurrency(amount)}
+        {formatCurrency(amount, language)}
       </div>
     </li>
   );

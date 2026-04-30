@@ -229,6 +229,7 @@
     "timings": "Timings",
     "contactPhone": "Contact phone",
     "upiId": "UPI ID",
+    "upiPlaceholder": "yourname@bank",
     "plan": {
       "oneMonth": "1 month",
       "nMonths": "{{count}} months"

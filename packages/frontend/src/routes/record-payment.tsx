@@ -21,7 +21,8 @@ function todayISO(): string {
 
 export default function RecordPaymentRoute() {
   const { id } = useParams<{ id: string }>();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.resolvedLanguage ?? i18n.language;
   const navigate = useNavigate();
 
   const [detail, setDetail] = useState<MemberDetailResponse | null>(null);
@@ -170,15 +171,15 @@ export default function RecordPaymentRoute() {
               </p>
               <p className="text-xs leading-relaxed opacity-90">
                 {t('pay.advanceRenewal.currentEnds', {
-                  date: formatDate(detail.currentMembership.endDate),
+                  date: formatDate(detail.currentMembership.endDate, language),
                 })}
                 {renewalPreview && selectedPlan && (
                   <>
                     {' '}
                     {t('pay.advanceRenewal.nextRange', {
                       plan: selectedPlan.name,
-                      start: formatDate(renewalPreview.start),
-                      end: formatDate(renewalPreview.end),
+                      start: formatDate(renewalPreview.start, language),
+                      end: formatDate(renewalPreview.end, language),
                     })}
                   </>
                 )}
@@ -264,7 +265,7 @@ export default function RecordPaymentRoute() {
               <div className="text-sm font-medium">
                 {t('pay.qr.amountTo', {
                   currency: t('common.currency'),
-                  amount: formatCurrency(Number(amount) || 0),
+                  amount: formatCurrency(Number(amount) || 0, language),
                   name: gym.upiDisplayName,
                 })}
               </div>
@@ -309,7 +310,8 @@ function PlanTile({
   selected: boolean;
   onClick: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.resolvedLanguage ?? i18n.language;
   return (
     <button
       type="button"
@@ -324,7 +326,7 @@ function PlanTile({
       <span className="text-sm font-medium">{plan.name}</span>
       <span className={cn('text-sm', selected ? 'font-semibold' : 'text-muted-foreground')}>
         {t('common.currency')}
-        {formatCurrency(plan.price)}
+        {formatCurrency(plan.price, language)}
       </span>
     </button>
   );

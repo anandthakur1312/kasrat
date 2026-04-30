@@ -8,6 +8,7 @@ import { api } from '@/lib/api';
 import { ApiError } from '@/lib/realApi';
 import { Avatar } from '@/components/avatar';
 import { LanguageToggle } from '@/components/language-toggle';
+import { formatCurrency } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 type Filter = 'all' | 'overdue' | 'expiring' | 'active';
@@ -256,7 +257,8 @@ function Section({
 }
 
 function MemberRow({ item }: { item: MemberListItem }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.resolvedLanguage ?? i18n.language;
 
   let statusText = '';
   if (item.status === 'overdue' && item.daysOverdue !== null) {
@@ -286,7 +288,7 @@ function MemberRow({ item }: { item: MemberListItem }) {
         {item.amountDue !== null && item.status === 'overdue' && (
           <div className="text-sm font-medium text-overdue-text whitespace-nowrap">
             {t('common.currency')}
-            {item.amountDue.toLocaleString('en-IN')}
+            {formatCurrency(item.amountDue, language)}
           </div>
         )}
       </Link>
