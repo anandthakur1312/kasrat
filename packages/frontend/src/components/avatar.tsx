@@ -12,6 +12,7 @@ const statusStyles: Record<MemberStatus, string> = {
   overdue: 'bg-overdue-bg text-overdue-text',
   payment_pending: 'bg-overdue-bg text-overdue-text',
   expiring: 'bg-expiring-bg text-expiring-text',
+  scheduled: 'bg-info-bg text-info-text',
   active: 'bg-secondary text-secondary-foreground',
 };
 

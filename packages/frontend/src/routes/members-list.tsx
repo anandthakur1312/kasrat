@@ -8,10 +8,10 @@ import { api } from '@/lib/api';
 import { ApiError } from '@/lib/realApi';
 import { Avatar } from '@/components/avatar';
 import { LanguageToggle } from '@/components/language-toggle';
-import { formatCurrency } from '@/lib/format';
+import { formatCurrency, formatDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
-type Filter = 'all' | 'overdue' | 'expiring' | 'active';
+type Filter = 'all' | 'overdue' | 'expiring' | 'scheduled' | 'active';
 
 export default function MembersListRoute() {
   const { t } = useTranslation();
@@ -57,6 +57,8 @@ export default function MembersListRoute() {
         if (item.status !== 'overdue' && item.status !== 'payment_pending') return false;
       } else if (filter === 'expiring') {
         if (item.status !== 'expiring') return false;
+      } else if (filter === 'scheduled') {
+        if (item.status !== 'scheduled') return false;
       } else if (filter === 'active') {
         if (item.status !== 'active') return false;
       }
@@ -71,13 +73,15 @@ export default function MembersListRoute() {
   const grouped = useMemo(() => {
     const overdue: MemberListItem[] = [];
     const expiring: MemberListItem[] = [];
+    const scheduled: MemberListItem[] = [];
     const active: MemberListItem[] = [];
     for (const item of filtered) {
       if (item.status === 'overdue' || item.status === 'payment_pending') overdue.push(item);
       else if (item.status === 'expiring') expiring.push(item);
+      else if (item.status === 'scheduled') scheduled.push(item);
       else active.push(item);
     }
-    return { overdue, expiring, active };
+    return { overdue, expiring, scheduled, active };
   }, [filtered]);
 
   return (
@@ -128,6 +132,12 @@ export default function MembersListRoute() {
             onClick={() => setFilter('expiring')}
           />
           <FilterChip
+            label={t('members.filter.scheduled')}
+            count={data?.counts.scheduled}
+            active={filter === 'scheduled'}
+            onClick={() => setFilter('scheduled')}
+          />
+          <FilterChip
             label={t('members.filter.active')}
             count={data?.counts.active}
             active={filter === 'active'}
@@ -167,6 +177,11 @@ export default function MembersListRoute() {
               title={t('members.section.expiring')}
               tone="expiring"
               items={grouped.expiring}
+            />
+            <Section
+              title={t('members.section.scheduled')}
+              tone="scheduled"
+              items={grouped.scheduled}
             />
             <Section
               title={t('members.section.active')}
@@ -227,7 +242,7 @@ function Section({
   items,
 }: {
   title: string;
-  tone: 'overdue' | 'expiring' | 'active';
+  tone: 'overdue' | 'expiring' | 'scheduled' | 'active';
   items: MemberListItem[];
 }) {
   if (items.length === 0) return null;
@@ -236,7 +251,9 @@ function Section({
       ? 'text-overdue-text'
       : tone === 'expiring'
         ? 'text-expiring-text'
-        : 'text-muted-foreground';
+        : tone === 'scheduled'
+          ? 'text-info-text'
+          : 'text-muted-foreground';
   return (
     <section>
       <div
@@ -265,6 +282,10 @@ function MemberRow({ item }: { item: MemberListItem }) {
     statusText = t('members.status.daysOverdue', { count: item.daysOverdue });
   } else if (item.status === 'payment_pending') {
     statusText = t('members.status.paymentPending');
+  } else if (item.status === 'scheduled' && item.currentMembership) {
+    statusText = t('members.status.startsOn', {
+      date: formatDate(item.currentMembership.startDate, language),
+    });
   } else if (
     (item.status === 'expiring' || item.status === 'active') &&
     item.daysRemaining !== null

@@ -188,6 +188,7 @@ function DetailBody({
         daysRemaining={daysRemaining}
         amountDue={amountDue}
         planName={plan?.name ?? null}
+        startDate={currentMembership?.startDate ?? null}
         endDate={currentMembership?.endDate ?? null}
       />
 
@@ -212,9 +213,9 @@ function DetailBody({
         </section>
       )}
 
-      {/* Record payment — label is contextual on member status (issue #5).
+      {/* Record payment — label is contextual on member status.
           payment_pending → first payment; overdue → renewal payment;
-          expiring → renew membership; active → add advance renewal. */}
+          scheduled → advance first payment; active → add advance renewal. */}
       <button
         type="button"
         onClick={onRecordPayment}
@@ -227,7 +228,9 @@ function DetailBody({
               ? 'detail.recordPayment.overdue'
               : status === 'expiring'
                 ? 'detail.recordPayment.expiring'
-                : 'detail.recordPayment.active',
+                : status === 'scheduled'
+                  ? 'detail.recordPayment.scheduled'
+                  : 'detail.recordPayment.active',
         )}
       </button>
 
@@ -273,6 +276,7 @@ function StatusCard({
   daysRemaining,
   amountDue,
   planName,
+  startDate,
   endDate,
 }: {
   status: MemberDetailResponse['status'];
@@ -280,6 +284,7 @@ function StatusCard({
   daysRemaining: number | null;
   amountDue: number | null;
   planName: string | null;
+  startDate: string | null;
   endDate: string | null;
 }) {
   const { t, i18n } = useTranslation();
@@ -290,7 +295,9 @@ function StatusCard({
       ? 'bg-overdue-bg text-overdue-text'
       : status === 'expiring'
         ? 'bg-expiring-bg text-expiring-text'
-        : 'bg-secondary text-secondary-foreground';
+        : status === 'scheduled'
+          ? 'bg-info-bg text-info-text'
+          : 'bg-secondary text-secondary-foreground';
 
   let header = '';
   let primary = '';
@@ -302,6 +309,9 @@ function StatusCard({
     secondary = endDate ? t('detail.status.expiredOn', { date: formatDate(endDate, language) }) : '';
   } else if (status === 'payment_pending') {
     header = t('detail.status.paymentPending');
+  } else if (status === 'scheduled') {
+    header = t('detail.status.scheduled');
+    primary = startDate ? t('detail.status.startsOn', { date: formatDate(startDate, language) }) : '';
   } else if (status === 'expiring') {
     header = t('detail.status.expiring');
     primary = t('detail.status.days', { count: daysRemaining ?? 0 });

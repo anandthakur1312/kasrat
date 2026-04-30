@@ -36,17 +36,20 @@
       "all": "All",
       "overdue": "Overdue",
       "expiring": "Expiring",
+      "scheduled": "Scheduled",
       "active": "Active"
     },
     "section": {
       "overdue": "Overdue",
       "expiring": "Expiring soon",
+      "scheduled": "Scheduled",
       "active": "Active"
     },
     "status": {
       "daysOverdue_one": "{{count}} day overdue",
       "daysOverdue_other": "{{count}} days overdue",
       "paymentPending": "Payment pending",
+      "startsOn": "Starts {{date}}",
       "daysLeft_one": "{{count}} day left",
       "daysLeft_other": "{{count}} days left"
     },
@@ -79,6 +82,7 @@
       "paymentPending": "Record first payment",
       "overdue": "Record renewal payment",
       "expiring": "Renew membership",
+      "scheduled": "Record advance payment",
       "active": "Add advance renewal"
     },
     "queued": {
@@ -102,9 +106,11 @@
       "overdue": "OVERDUE",
       "active": "ACTIVE",
       "expiring": "EXPIRING",
+      "scheduled": "SCHEDULED",
       "paymentPending": "PAYMENT PENDING",
       "days_one": "{{count}} day",
       "days_other": "{{count}} days",
+      "startsOn": "Starts {{date}}",
       "expiredOn": "Expired {{date}}",
       "endsOn": "Ends {{date}}"
     },
@@ -242,15 +248,21 @@
   "pay": {
     "title": "Renew membership",
     "titleAdvance": "Add advance renewal",
+    "titleScheduled": "Record advance payment",
     "plan": "Plan",
     "amount": "Amount",
-    "date": "Date",
+    "date": "Payment date",
     "method": "Method",
     "advanceRenewal": {
       "heading": "Advance renewal",
       "explainer": "This payment will create the next membership after the current one ends.",
       "currentEnds": "Current plan ends {{date}}.",
       "nextRange": "New {{plan}} plan will run {{start}} – {{end}}."
+    },
+    "scheduled": {
+      "heading": "Scheduled membership",
+      "explainer": "Membership starts on {{date}}. This payment will be applied to that scheduled membership.",
+      "plan": "Selected plan: {{plan}}"
     },
     "qr": {
       "label": "Show to member",
