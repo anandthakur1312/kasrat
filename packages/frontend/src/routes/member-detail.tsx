@@ -190,13 +190,44 @@ function DetailBody({
         endDate={currentMembership?.endDate ?? null}
       />
 
-      {/* Record payment */}
+      {/* Queued memberships (issue #5): show what's already paid for after
+          the current term so the owner doesn't accidentally double-book it. */}
+      {data.queuedMemberships.length > 0 && (
+        <section>
+          <h2 className="text-[11px] uppercase tracking-[0.5px] font-medium text-muted-foreground mb-2">
+            {t('detail.queued.title')}
+          </h2>
+          <ul className="rounded-lg border border-border overflow-hidden divide-y divide-border/60">
+            {data.queuedMemberships.map((m) => (
+              <li key={m.id} className="px-3 py-2.5 bg-card text-sm">
+                {t('detail.queued.range', {
+                  plan: m.planName,
+                  start: formatDate(m.startDate),
+                  end: formatDate(m.endDate),
+                })}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* Record payment — label is contextual on member status (issue #5).
+          payment_pending → first payment; overdue → renewal payment;
+          expiring → renew membership; active → add advance renewal. */}
       <button
         type="button"
         onClick={onRecordPayment}
         className="w-full h-11 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90"
       >
-        {t('detail.recordPayment')}
+        {t(
+          status === 'payment_pending'
+            ? 'detail.recordPayment.paymentPending'
+            : status === 'overdue'
+              ? 'detail.recordPayment.overdue'
+              : status === 'expiring'
+                ? 'detail.recordPayment.expiring'
+                : 'detail.recordPayment.active',
+        )}
       </button>
 
       {/* Payment history */}

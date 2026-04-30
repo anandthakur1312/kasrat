@@ -75,7 +75,16 @@
   "detail": {
     "title": "सदस्य",
     "joined": "{{date}} को जुड़े",
-    "recordPayment": "भुगतान दर्ज करें",
+    "recordPayment": {
+      "paymentPending": "पहला भुगतान दर्ज करें",
+      "overdue": "नवीनीकरण भुगतान दर्ज करें",
+      "expiring": "सदस्यता नवीनीकृत करें",
+      "active": "अग्रिम नवीनीकरण जोड़ें"
+    },
+    "queued": {
+      "title": "अगला प्लान कतार में",
+      "range": "{{plan}} · {{start}} – {{end}}"
+    },
     "menu": {
       "edit": "संपादित करें",
       "remove": "हटाएँ"
@@ -231,10 +240,17 @@
   },
   "pay": {
     "title": "सदस्यता नवीनीकरण",
+    "titleAdvance": "अग्रिम नवीनीकरण जोड़ें",
     "plan": "प्लान",
     "amount": "राशि",
     "date": "तारीख़",
     "method": "तरीक़ा",
+    "advanceRenewal": {
+      "heading": "अग्रिम नवीनीकरण",
+      "explainer": "यह भुगतान मौजूदा सदस्यता समाप्त होने के बाद की अगली सदस्यता बनाएगा।",
+      "currentEnds": "मौजूदा प्लान {{date}} को समाप्त होगा।",
+      "nextRange": "नया {{plan}} प्लान {{start}} – {{end}} तक चलेगा।"
+    },
     "qr": {
       "label": "सदस्य को दिखाएँ",
       "amountTo": "{{currency}}{{amount}} → {{name}}",
