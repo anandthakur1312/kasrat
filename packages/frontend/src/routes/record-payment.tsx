@@ -4,10 +4,11 @@ import { useTranslation } from 'react-i18next';
 import { ArrowLeft } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { toast } from 'sonner';
-import type { Gym, Member, PaymentMethod, Plan } from '@gym-app/shared/types';
+import type { Gym, MemberDetailResponse, MemberStatus, PaymentMethod, Plan } from '@gym-app/shared/types';
 import { api } from '@/lib/api';
 import { Avatar } from '@/components/avatar';
-import { formatCurrency } from '@/lib/format';
+import { formatCurrency, formatDate } from '@/lib/format';
+import { addDays, addMonths, iso, parseDate } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 
 function todayISO(): string {
@@ -23,10 +24,14 @@ export default function RecordPaymentRoute() {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
-  const [member, setMember] = useState<Member | null>(null);
+  const [detail, setDetail] = useState<MemberDetailResponse | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [gym, setGym] = useState<Gym | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Derived helpers — null until the detail loads.
+  const member = detail?.member ?? null;
+  const status: MemberStatus | null = detail?.status ?? null;
 
   const [planId, setPlanId] = useState<string | null>(null);
   const [amount, setAmount] = useState<string>('');
@@ -41,13 +46,13 @@ export default function RecordPaymentRoute() {
       api.getMemberDetail(id),
       api.getPlans(),
       api.getGym(),
-    ]).then(([detail, planList, gymData]) => {
+    ]).then(([detailData, planList, gymData]) => {
       if (cancelled) return;
-      setMember(detail.member);
+      setDetail(detailData);
       setPlans(planList);
       setGym(gymData);
       // Default plan: previous plan if any, else first
-      const defaultPlan = detail.plan?.id ?? planList[0]?.id ?? null;
+      const defaultPlan = detailData.plan?.id ?? planList[0]?.id ?? null;
       setPlanId(defaultPlan);
       const defaultPrice = planList.find((p) => p.id === defaultPlan)?.price ?? 0;
       setAmount(String(defaultPrice));
@@ -66,6 +71,28 @@ export default function RecordPaymentRoute() {
   }
 
   const refNote = member ? `GYM-MEM-${member.id}` : '';
+  const isAdvanceRenewal = status === 'active';
+
+  // Issue #5: when an active member pays, the new membership queues
+  // *after* the latest non-cancelled end (current or any queued one).
+  // Compute the prospective range so the UI can show the owner exactly
+  // what they're scheduling.
+  const latestNonCancelledEnd = useMemo<string | null>(() => {
+    if (!detail) return null;
+    const ends: string[] = [];
+    if (detail.currentMembership) ends.push(detail.currentMembership.endDate);
+    for (const m of detail.queuedMemberships) ends.push(m.endDate);
+    if (ends.length === 0) return null;
+    return ends.reduce((max, e) => (e > max ? e : max), ends[0]!);
+  }, [detail]);
+
+  const selectedPlan = plans.find((p) => p.id === planId) ?? null;
+  const renewalPreview = useMemo(() => {
+    if (!isAdvanceRenewal || !latestNonCancelledEnd || !selectedPlan) return null;
+    const start = addDays(parseDate(latestNonCancelledEnd), 1);
+    const end = addMonths(start, selectedPlan.durationMonths);
+    return { start: iso(start), end: iso(end) };
+  }, [isAdvanceRenewal, latestNonCancelledEnd, selectedPlan]);
 
   const upiUrl = useMemo(() => {
     if (!gym) return '';
@@ -111,7 +138,9 @@ export default function RecordPaymentRoute() {
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
-        <h1 className="text-[15px] font-medium">{t('pay.title')}</h1>
+        <h1 className="text-[15px] font-medium">
+          {t(isAdvanceRenewal ? 'pay.titleAdvance' : 'pay.title')}
+        </h1>
       </header>
 
       {loading || !member || !gym ? (
@@ -126,6 +155,36 @@ export default function RecordPaymentRoute() {
               <div className="text-xs text-muted-foreground truncate">{member.phone}</div>
             </div>
           </div>
+
+          {/* Advance-renewal context card (issue #5).
+              Only shown for active members so the owner sees that this
+              payment queues a *future* membership rather than extending
+              the current one. */}
+          {isAdvanceRenewal && detail?.currentMembership && (
+            <section className="rounded-lg bg-info-bg text-info-text px-4 py-3 space-y-1.5">
+              <div className="text-[11px] uppercase tracking-[0.5px] font-semibold">
+                {t('pay.advanceRenewal.heading')}
+              </div>
+              <p className="text-sm leading-relaxed">
+                {t('pay.advanceRenewal.explainer')}
+              </p>
+              <p className="text-xs leading-relaxed opacity-90">
+                {t('pay.advanceRenewal.currentEnds', {
+                  date: formatDate(detail.currentMembership.endDate),
+                })}
+                {renewalPreview && selectedPlan && (
+                  <>
+                    {' '}
+                    {t('pay.advanceRenewal.nextRange', {
+                      plan: selectedPlan.name,
+                      start: formatDate(renewalPreview.start),
+                      end: formatDate(renewalPreview.end),
+                    })}
+                  </>
+                )}
+              </p>
+            </section>
+          )}
 
           {/* Plan picker */}
           <section>

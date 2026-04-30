@@ -75,7 +75,16 @@
   "detail": {
     "title": "Member",
     "joined": "Joined {{date}}",
-    "recordPayment": "Record payment",
+    "recordPayment": {
+      "paymentPending": "Record first payment",
+      "overdue": "Record renewal payment",
+      "expiring": "Renew membership",
+      "active": "Add advance renewal"
+    },
+    "queued": {
+      "title": "Next plan queued",
+      "range": "{{plan}} · {{start}} – {{end}}"
+    },
     "menu": {
       "edit": "Edit",
       "remove": "Remove"
@@ -231,10 +240,17 @@
   },
   "pay": {
     "title": "Renew membership",
+    "titleAdvance": "Add advance renewal",
     "plan": "Plan",
     "amount": "Amount",
     "date": "Date",
     "method": "Method",
+    "advanceRenewal": {
+      "heading": "Advance renewal",
+      "explainer": "This payment will create the next membership after the current one ends.",
+      "currentEnds": "Current plan ends {{date}}.",
+      "nextRange": "New {{plan}} plan will run {{start}} – {{end}}."
+    },
     "qr": {
       "label": "Show to member",
       "amountTo": "{{currency}}{{amount}} to {{name}}",

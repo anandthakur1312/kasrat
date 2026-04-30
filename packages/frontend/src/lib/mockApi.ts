@@ -217,7 +217,10 @@ export const mockApi = {
     return {
       member,
       currentMembership: current,
-      queuedMemberships: queued,
+      queuedMemberships: queued.map((m) => ({
+        ...m,
+        planName: mockState.plans.find((pl) => pl.id === m.planId)?.name ?? '',
+      })),
       plan,
       status: s.status,
       daysOverdue: s.daysOverdue,
