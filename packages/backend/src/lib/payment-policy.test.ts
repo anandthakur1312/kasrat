@@ -46,7 +46,7 @@ describe('planMembershipAction', () => {
   });
 
   describe('active paid membership, no queued', () => {
-    it('queues a renewal starting the day after the active one ends', () => {
+    it('queues a renewal starting on the active membership end date', () => {
       const action = planMembershipAction({
         activeNow: {
           id: 'membership-current',
@@ -62,8 +62,10 @@ describe('planMembershipAction', () => {
 
       expect(action.kind).toBe('queueRenewal');
       if (action.kind !== 'queueRenewal') return;
-      expect(action.data.startDate).toBe('2026-05-02');
-      expect(action.data.endDate).toBe('2026-08-02');
+      // endDate is exclusive, so a membership ending on May 1 is no longer
+      // active on May 1. The renewal should start that same day, not May 2.
+      expect(action.data.startDate).toBe('2026-05-01');
+      expect(action.data.endDate).toBe('2026-08-01');
       expect(action.data.planId).toBe('plan-3');
       expect(action.data.amountDue).toBe(2700);
       expect(action.data.amountPaid).toBe(2700);
@@ -73,9 +75,9 @@ describe('planMembershipAction', () => {
 
   describe('active paid membership with already-queued renewal (issue #5)', () => {
     it('queues a SECOND renewal after the latest queued end, not after activeNow', () => {
-      // Member has Active Apr 1–May 1 + already-queued May 2–Aug 2.
+      // Member has Active Apr 1–May 1 + already-queued May 1–Aug 1.
       // Owner records another advance payment today (Apr 29). The new
-      // membership must start Aug 3, not May 2 — otherwise it overlaps
+      // membership must start Aug 1, not May 1 — otherwise it overlaps
       // the existing queued membership.
       const action = planMembershipAction({
         activeNow: {
@@ -84,7 +86,7 @@ describe('planMembershipAction', () => {
           amountPaid: 1000,
         },
         scheduledUnpaid: null,
-        latestNonCancelledEnd: '2026-08-02', // the queued membership's end
+        latestNonCancelledEnd: '2026-08-01', // the queued membership's exclusive end
         plan: PLAN_1MO,
         amount: 1000,
         paidOn: '2026-04-29',
@@ -92,13 +94,13 @@ describe('planMembershipAction', () => {
 
       expect(action.kind).toBe('queueRenewal');
       if (action.kind !== 'queueRenewal') return;
-      expect(action.data.startDate).toBe('2026-08-03');
-      expect(action.data.endDate).toBe('2026-09-03');
+      expect(action.data.startDate).toBe('2026-08-01');
+      expect(action.data.endDate).toBe('2026-09-01');
     });
 
     it('chains a third advance renewal after a second queued one', () => {
-      // Active Apr 1–May 1, queued #1 May 2–Aug 2, queued #2 Aug 3–Nov 3.
-      // Third advance must start Nov 4.
+      // Active Apr 1–May 1, queued #1 May 1–Aug 1, queued #2 Aug 1–Nov 1.
+      // Third advance must start Nov 1.
       const action = planMembershipAction({
         activeNow: {
           id: 'membership-active',
@@ -106,7 +108,7 @@ describe('planMembershipAction', () => {
           amountPaid: 1000,
         },
         scheduledUnpaid: null,
-        latestNonCancelledEnd: '2026-11-03',
+        latestNonCancelledEnd: '2026-11-01',
         plan: PLAN_1MO,
         amount: 1000,
         paidOn: '2026-04-29',
@@ -114,8 +116,8 @@ describe('planMembershipAction', () => {
 
       expect(action.kind).toBe('queueRenewal');
       if (action.kind !== 'queueRenewal') return;
-      expect(action.data.startDate).toBe('2026-11-04');
-      expect(action.data.endDate).toBe('2026-12-04');
+      expect(action.data.startDate).toBe('2026-11-01');
+      expect(action.data.endDate).toBe('2026-12-01');
     });
 
     it('still queues after an active paid membership even if a future unpaid row exists', () => {
@@ -137,7 +139,7 @@ describe('planMembershipAction', () => {
 
       expect(action.kind).toBe('queueRenewal');
       if (action.kind !== 'queueRenewal') return;
-      expect(action.data.startDate).toBe('2026-06-11');
+      expect(action.data.startDate).toBe('2026-06-10');
     });
   });
 
@@ -157,7 +159,7 @@ describe('planMembershipAction', () => {
 
       expect(action.kind).toBe('queueRenewal');
       if (action.kind !== 'queueRenewal') return;
-      expect(action.data.startDate).toBe('2026-07-02');
+      expect(action.data.startDate).toBe('2026-07-01');
     });
   });
 

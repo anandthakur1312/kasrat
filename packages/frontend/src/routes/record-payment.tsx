@@ -8,7 +8,7 @@ import type { Gym, MemberDetailResponse, MemberStatus, PaymentMethod, Plan } fro
 import { api } from '@/lib/api';
 import { Avatar } from '@/components/avatar';
 import { formatCurrency, formatDate } from '@/lib/format';
-import { addDays, addMonths, iso, parseDate } from '@/lib/dates';
+import { addMonths, iso, parseDate } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 
 function todayISO(): string {
@@ -91,7 +91,7 @@ export default function RecordPaymentRoute() {
   const selectedPlan = plans.find((p) => p.id === planId) ?? null;
   const renewalPreview = useMemo(() => {
     if (!isAdvanceRenewal || !latestNonCancelledEnd || !selectedPlan) return null;
-    const start = addDays(parseDate(latestNonCancelledEnd), 1);
+    const start = parseDate(latestNonCancelledEnd);
     const end = addMonths(start, selectedPlan.durationMonths);
     return { start: iso(start), end: iso(end) };
   }, [isAdvanceRenewal, latestNonCancelledEnd, selectedPlan]);

@@ -10,15 +10,16 @@
 //                       paid, customPrice in place. See issues #3 and #8.
 //   2. queueRenewal  — there is at least one non-cancelled membership whose
 //                       endDate is still in the future (active and/or already
-//                       queued). The new payment queues a renewal starting
-//                       the day after the *latest* of those end dates — never
-//                       overlapping a prior queued membership. See issue #5.
+//                       queued). The new payment queues a renewal starting on
+//                       the *latest* of those end dates. endDate is exclusive,
+//                       so this gives continuous coverage without overlap.
+//                       See issue #5.
 //   3. createFresh   — no future-ending memberships at all (lapsed long ago,
 //                       or member's only memberships have already expired);
 //                       the new payment creates a fresh membership starting
 //                       on body.paidOn.
 
-import { addDays, addMonths, iso, parseDate } from './dates.js';
+import { addMonths, iso, parseDate } from './dates.js';
 
 export type ActiveMembership = {
   id: string;
@@ -105,14 +106,18 @@ export function planMembershipAction(args: {
   // its startDate.
   //
   // If there's any non-cancelled membership ending strictly *after* the
-  // payment date — current and/or queued — we queue this new one to begin
-  // the day after the latest of those ends. This is the issue-#5 fix:
-  // queueing must respect all queued memberships, not just the active one.
+  // payment date — current and/or queued — we queue this new one to begin on
+  // the latest of those ends. This is the issue-#5 fix: queueing must respect
+  // all queued memberships, not just the active one.
+  //
+  // endDate is exclusive in the active filter (`startDate <= today < endDate`),
+  // so the next membership starts exactly on the previous endDate. Adding a day
+  // here creates a real uncovered day in stored membership data.
   //
   // Otherwise (no future end at all), it's a fresh start on the payment
   // date itself.
   if (latestNonCancelledEnd && latestNonCancelledEnd > paidOn) {
-    const start = addDays(parseDate(latestNonCancelledEnd), 1);
+    const start = parseDate(latestNonCancelledEnd);
     const end = addMonths(start, plan.durationMonths);
     return {
       kind: 'queueRenewal',
