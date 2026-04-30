@@ -82,19 +82,20 @@ function PaymentRow({
   recordedByName: string;
   amount: number;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.resolvedLanguage ?? i18n.language;
   return (
     <li className="flex items-center justify-between gap-3 px-3 py-2.5 bg-card">
       <div className="min-w-0">
         <div className="text-sm font-medium truncate">{planName}</div>
         <div className="text-xs text-muted-foreground truncate">
-          {formatDate(paidOn)} · {t(`payment.method.${method}`)} ·{' '}
+          {formatDate(paidOn, language)} · {t(`payment.method.${method}`)} ·{' '}
           {t('detail.history.recordedBy', { name: recordedByName })}
         </div>
       </div>
       <div className="text-sm font-medium whitespace-nowrap">
         {t('common.currency')}
-        {formatCurrency(amount)}
+        {formatCurrency(amount, language)}
       </div>
     </li>
   );

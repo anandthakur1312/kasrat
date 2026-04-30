@@ -1,4 +1,5 @@
 import { SignIn, SignUp } from '@clerk/react';
+import { useTranslation } from 'react-i18next';
 import { LanguageToggle } from '@/components/language-toggle';
 
 /**
@@ -35,6 +36,8 @@ export function SignUpRoute() {
 }
 
 function AuthFrame({ children }: { children: React.ReactNode }) {
+  const { t } = useTranslation();
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="flex justify-between items-center px-4 pt-4">
@@ -42,7 +45,7 @@ function AuthFrame({ children }: { children: React.ReactNode }) {
           <div className="h-8 w-8 rounded-md bg-primary text-primary-foreground inline-flex items-center justify-center text-sm font-bold">
             K
           </div>
-          <span className="text-sm font-medium">Kasrat</span>
+          <span className="text-sm font-medium">{t('app.name')}</span>
         </div>
         <LanguageToggle />
       </header>

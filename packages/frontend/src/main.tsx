@@ -1,7 +1,9 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ClerkProvider } from '@clerk/react';
-import '@/lib/i18n';
+import { enUS, hiIN } from '@clerk/localizations';
+import { useTranslation } from 'react-i18next';
+import { normalizeLanguage } from '@/lib/i18n';
 import App from './App';
 import './index.css';
 
@@ -15,10 +17,29 @@ if (!PUBLISHABLE_KEY) {
   );
 }
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <ClerkProvider publishableKey={PUBLISHABLE_KEY} afterSignOutUrl="/sign-in">
+const clerkPublishableKey = PUBLISHABLE_KEY;
+const clerkHiIN = {
+  ...hiIN,
+  formFieldInputPlaceholder__signUpPassword: 'पासवर्ड बनाएँ',
+};
+
+function Root() {
+  const { i18n } = useTranslation();
+  const language = normalizeLanguage(i18n.resolvedLanguage ?? i18n.language);
+
+  return (
+    <ClerkProvider
+      publishableKey={clerkPublishableKey}
+      afterSignOutUrl="/sign-in"
+      localization={language === 'hi' ? clerkHiIN : enUS}
+    >
       <App />
     </ClerkProvider>
+  );
+}
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <Root />
   </StrictMode>,
 );

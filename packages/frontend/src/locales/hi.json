@@ -213,6 +213,7 @@
     "timings": "समय",
     "contactPhone": "संपर्क फ़ोन",
     "upiId": "यूपीआई आईडी",
+    "upiPlaceholder": "aapka-naam@bank",
     "plan": {
       "oneMonth": "1 महीना",
       "nMonths": "{{count}} महीने"
