@@ -64,6 +64,8 @@ function currentMembershipFor(memberId: string): Membership | null {
     (m) => m.startDate <= today && today < m.endDate && m.status !== 'cancelled',
   );
   if (active) return active;
+  const scheduled = ms.find((m) => m.startDate > today && m.status !== 'cancelled');
+  if (scheduled) return scheduled;
   // otherwise the most recent expired/cancelled
   const past = ms.filter((m) => m.endDate <= today);
   return past[past.length - 1] ?? null;
@@ -71,8 +73,9 @@ function currentMembershipFor(memberId: string): Membership | null {
 
 function queuedMembershipsFor(memberId: string): Membership[] {
   const today = iso(TODAY);
+  const current = currentMembershipFor(memberId);
   return membershipsForMember(memberId).filter(
-    (m) => m.startDate > today && m.status !== 'cancelled',
+    (m) => m.startDate > today && m.status !== 'cancelled' && m.id !== current?.id,
   );
 }
 
@@ -91,6 +94,16 @@ function computeStatus(
       status: 'payment_pending',
       daysOverdue: null,
       daysRemaining: null,
+      amountDue: null,
+    };
+  }
+
+  const start = parseDate(current.startDate);
+  if (start > TODAY) {
+    return {
+      status: 'scheduled',
+      daysOverdue: null,
+      daysRemaining: daysBetween(TODAY, start),
       amountDue: null,
     };
   }
@@ -158,17 +171,19 @@ function buildListItem(member: Member): MemberListItem {
 }
 
 function sortListItems(items: MemberListItem[]): MemberListItem[] {
-  // overdue (most overdue first) → payment_pending → expiring (least time first) → active (alphabetical)
+  // overdue → payment_pending → expiring → scheduled → active
   const rank: Record<MemberStatus, number> = {
     overdue: 0,
     payment_pending: 1,
     expiring: 2,
-    active: 3,
+    scheduled: 3,
+    active: 4,
   };
   return [...items].sort((a, b) => {
     if (rank[a.status] !== rank[b.status]) return rank[a.status] - rank[b.status];
     if (a.status === 'overdue') return (b.daysOverdue ?? 0) - (a.daysOverdue ?? 0);
     if (a.status === 'expiring') return (a.daysRemaining ?? 0) - (b.daysRemaining ?? 0);
+    if (a.status === 'scheduled') return (a.daysRemaining ?? 0) - (b.daysRemaining ?? 0);
     if (a.status === 'active') return a.member.name.localeCompare(b.member.name);
     return a.member.name.localeCompare(b.member.name);
   });
@@ -189,6 +204,7 @@ export const mockApi = {
         (i) => i.status === 'overdue' || i.status === 'payment_pending',
       ).length,
       expiring: sorted.filter((i) => i.status === 'expiring').length,
+      scheduled: sorted.filter((i) => i.status === 'scheduled').length,
       active: sorted.filter((i) => i.status === 'active').length,
     };
     return { members: sorted, counts };
@@ -288,13 +304,28 @@ export const mockApi = {
     const activeNow = existing.find(
       (m) => m.startDate <= today && today < m.endDate && m.status === 'active',
     );
+    const scheduledUnpaid = existing.find(
+      (m) => m.startDate > today && m.status !== 'cancelled' && m.amountPaid === 0 && m.amountDue > 0,
+    );
 
     let membership: Membership;
 
-    // If member has an unpaid active membership, attach payment to it.
-    if (activeNow && activeNow.amountPaid === 0) {
-      activeNow.amountPaid = req.amount;
-      membership = activeNow;
+    // If member has an unpaid active or scheduled membership, attach payment
+    // to it and preserve its selected coverage start date.
+    const unpaidToUpdate = activeNow
+      ? activeNow.amountPaid === 0
+        ? activeNow
+        : null
+      : scheduledUnpaid;
+    if (unpaidToUpdate) {
+      const start = parseDate(unpaidToUpdate.startDate);
+      const end = addMonths(start, plan.durationMonths);
+      unpaidToUpdate.planId = plan.id;
+      unpaidToUpdate.endDate = iso(end);
+      unpaidToUpdate.amountDue = plan.price;
+      unpaidToUpdate.customPrice = req.amount !== plan.price ? req.amount : null;
+      unpaidToUpdate.amountPaid = req.amount;
+      membership = unpaidToUpdate;
     } else if (activeNow) {
       // Active membership is paid; queue a new one starting day after current ends.
       const start = addDays(parseDate(activeNow.endDate), 1);

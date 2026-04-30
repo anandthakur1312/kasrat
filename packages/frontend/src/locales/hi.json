@@ -36,17 +36,20 @@
       "all": "सभी",
       "overdue": "बकाया",
       "expiring": "समाप्त हो रहे",
+      "scheduled": "निर्धारित",
       "active": "सक्रिय"
     },
     "section": {
       "overdue": "बकाया",
       "expiring": "जल्द समाप्त",
+      "scheduled": "निर्धारित",
       "active": "सक्रिय"
     },
     "status": {
       "daysOverdue_one": "{{count}} दिन बकाया",
       "daysOverdue_other": "{{count}} दिन बकाया",
       "paymentPending": "भुगतान लंबित",
+      "startsOn": "{{date}} से शुरू",
       "daysLeft_one": "{{count}} दिन बाकी",
       "daysLeft_other": "{{count}} दिन बाकी"
     },
@@ -79,6 +82,7 @@
       "paymentPending": "पहला भुगतान दर्ज करें",
       "overdue": "नवीनीकरण भुगतान दर्ज करें",
       "expiring": "सदस्यता नवीनीकृत करें",
+      "scheduled": "अग्रिम भुगतान दर्ज करें",
       "active": "अग्रिम नवीनीकरण जोड़ें"
     },
     "queued": {
@@ -102,9 +106,11 @@
       "overdue": "बकाया",
       "active": "सक्रिय",
       "expiring": "समाप्ति निकट",
+      "scheduled": "निर्धारित",
       "paymentPending": "भुगतान लंबित",
       "days_one": "{{count}} दिन",
       "days_other": "{{count}} दिन",
+      "startsOn": "{{date}} से शुरू",
       "expiredOn": "{{date}} को समाप्त",
       "endsOn": "{{date}} को समाप्त"
     },
@@ -242,15 +248,21 @@
   "pay": {
     "title": "सदस्यता नवीनीकरण",
     "titleAdvance": "अग्रिम नवीनीकरण जोड़ें",
+    "titleScheduled": "अग्रिम भुगतान दर्ज करें",
     "plan": "प्लान",
     "amount": "राशि",
-    "date": "तारीख़",
+    "date": "भुगतान तारीख़",
     "method": "तरीक़ा",
     "advanceRenewal": {
       "heading": "अग्रिम नवीनीकरण",
       "explainer": "यह भुगतान मौजूदा सदस्यता समाप्त होने के बाद की अगली सदस्यता बनाएगा।",
       "currentEnds": "मौजूदा प्लान {{date}} को समाप्त होगा।",
       "nextRange": "नया {{plan}} प्लान {{start}} – {{end}} तक चलेगा।"
+    },
+    "scheduled": {
+      "heading": "निर्धारित सदस्यता",
+      "explainer": "सदस्यता {{date}} से शुरू होगी। यह भुगतान उसी निर्धारित सदस्यता पर लागू होगा।",
+      "plan": "चुना गया प्लान: {{plan}}"
     },
     "qr": {
       "label": "सदस्य को दिखाएँ",

@@ -73,6 +73,7 @@ export default function RecordPaymentRoute() {
 
   const refNote = member ? `GYM-MEM-${member.id}` : '';
   const isAdvanceRenewal = status === 'active';
+  const isScheduledPayment = status === 'scheduled';
 
   // Issue #5: when an active member pays, the new membership queues
   // *after* the latest non-cancelled end (current or any queued one).
@@ -140,7 +141,13 @@ export default function RecordPaymentRoute() {
           <ArrowLeft className="h-5 w-5" />
         </button>
         <h1 className="text-[15px] font-medium">
-          {t(isAdvanceRenewal ? 'pay.titleAdvance' : 'pay.title')}
+          {t(
+            isScheduledPayment
+              ? 'pay.titleScheduled'
+              : isAdvanceRenewal
+                ? 'pay.titleAdvance'
+                : 'pay.title',
+          )}
         </h1>
       </header>
 
@@ -184,6 +191,24 @@ export default function RecordPaymentRoute() {
                   </>
                 )}
               </p>
+            </section>
+          )}
+
+          {isScheduledPayment && detail?.currentMembership && (
+            <section className="rounded-lg bg-info-bg text-info-text px-4 py-3 space-y-1.5">
+              <div className="text-[11px] uppercase tracking-[0.5px] font-semibold">
+                {t('pay.scheduled.heading')}
+              </div>
+              <p className="text-sm leading-relaxed">
+                {t('pay.scheduled.explainer', {
+                  date: formatDate(detail.currentMembership.startDate, language),
+                })}
+              </p>
+              {selectedPlan && (
+                <p className="text-xs leading-relaxed opacity-90">
+                  {t('pay.scheduled.plan', { plan: selectedPlan.name })}
+                </p>
+              )}
             </section>
           )}
 

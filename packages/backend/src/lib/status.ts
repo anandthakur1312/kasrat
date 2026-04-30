@@ -18,6 +18,15 @@ export function computeStatus(
   if (!current) {
     return { status: 'payment_pending', daysOverdue: null, daysRemaining: null, amountDue: null };
   }
+  const start = parseDate(current.startDate);
+  if (start > TODAY) {
+    return {
+      status: 'scheduled',
+      daysOverdue: null,
+      daysRemaining: daysBetween(TODAY, start),
+      amountDue: null,
+    };
+  }
   if (current.amountPaid === 0 && current.amountDue > 0) {
     return {
       status: 'payment_pending',

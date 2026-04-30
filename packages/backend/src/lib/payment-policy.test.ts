@@ -10,6 +10,7 @@ describe('planMembershipAction', () => {
     it('creates a fresh membership starting on paidOn', () => {
       const action = planMembershipAction({
         activeNow: null,
+        scheduledUnpaid: null,
         latestNonCancelledEnd: null,
         plan: PLAN_3MO,
         amount: 2700,
@@ -31,6 +32,7 @@ describe('planMembershipAction', () => {
     it('creates a fresh membership when only past memberships exist', () => {
       const action = planMembershipAction({
         activeNow: null,
+        scheduledUnpaid: null,
         latestNonCancelledEnd: '2026-01-01', // long-expired
         plan: PLAN_1MO,
         amount: 1000,
@@ -51,6 +53,7 @@ describe('planMembershipAction', () => {
           startDate: '2026-04-01',
           amountPaid: 1000,
         },
+        scheduledUnpaid: null,
         latestNonCancelledEnd: '2026-05-01', // = active.endDate
         plan: PLAN_3MO,
         amount: 2700,
@@ -80,6 +83,7 @@ describe('planMembershipAction', () => {
           startDate: '2026-04-01',
           amountPaid: 1000,
         },
+        scheduledUnpaid: null,
         latestNonCancelledEnd: '2026-08-02', // the queued membership's end
         plan: PLAN_1MO,
         amount: 1000,
@@ -101,6 +105,7 @@ describe('planMembershipAction', () => {
           startDate: '2026-04-01',
           amountPaid: 1000,
         },
+        scheduledUnpaid: null,
         latestNonCancelledEnd: '2026-11-03',
         plan: PLAN_1MO,
         amount: 1000,
@@ -112,6 +117,28 @@ describe('planMembershipAction', () => {
       expect(action.data.startDate).toBe('2026-11-04');
       expect(action.data.endDate).toBe('2026-12-04');
     });
+
+    it('still queues after an active paid membership even if a future unpaid row exists', () => {
+      const action = planMembershipAction({
+        activeNow: {
+          id: 'membership-active',
+          startDate: '2026-04-01',
+          amountPaid: 1000,
+        },
+        scheduledUnpaid: {
+          id: 'membership-future-unpaid',
+          startDate: '2026-05-10',
+        },
+        latestNonCancelledEnd: '2026-06-10',
+        plan: PLAN_1MO,
+        amount: 1000,
+        paidOn: '2026-04-29',
+      });
+
+      expect(action.kind).toBe('queueRenewal');
+      if (action.kind !== 'queueRenewal') return;
+      expect(action.data.startDate).toBe('2026-06-11');
+    });
   });
 
   describe('queued-only membership (no active)', () => {
@@ -121,6 +148,7 @@ describe('planMembershipAction', () => {
       // wants to record another advance payment. The new one queues after.
       const action = planMembershipAction({
         activeNow: null,
+        scheduledUnpaid: null,
         latestNonCancelledEnd: '2026-07-01',
         plan: PLAN_1MO,
         amount: 1000,
@@ -133,6 +161,59 @@ describe('planMembershipAction', () => {
     });
   });
 
+  describe('scheduled unpaid membership (issue #8)', () => {
+    it('updates the scheduled row in place and preserves its future start date', () => {
+      const action = planMembershipAction({
+        activeNow: null,
+        scheduledUnpaid: {
+          id: 'membership-scheduled-unpaid',
+          startDate: '2026-05-10',
+        },
+        latestNonCancelledEnd: '2026-06-10',
+        plan: PLAN_1MO,
+        amount: 1000,
+        paidOn: '2026-04-30',
+      });
+
+      expect(action.kind).toBe('updateUnpaid');
+      if (action.kind !== 'updateUnpaid') return;
+      expect(action.membershipId).toBe('membership-scheduled-unpaid');
+      expect(action.data).toEqual({
+        planId: 'plan-1',
+        startDate: '2026-05-10',
+        endDate: '2026-06-10',
+        amountDue: 1000,
+        amountPaid: 1000,
+        customPrice: null,
+      });
+    });
+
+    it('rewrites plan, end date, due, and custom price without using paidOn as coverage start', () => {
+      const action = planMembershipAction({
+        activeNow: null,
+        scheduledUnpaid: {
+          id: 'membership-scheduled-unpaid',
+          startDate: '2026-05-10',
+        },
+        latestNonCancelledEnd: '2027-05-10',
+        plan: PLAN_3MO,
+        amount: 2500,
+        paidOn: '2026-04-30',
+      });
+
+      expect(action.kind).toBe('updateUnpaid');
+      if (action.kind !== 'updateUnpaid') return;
+      expect(action.data).toEqual({
+        planId: 'plan-3',
+        startDate: '2026-05-10',
+        endDate: '2026-08-10',
+        amountDue: 2700,
+        amountPaid: 2500,
+        customPrice: 2500,
+      });
+    });
+  });
+
   describe('active unpaid membership (Payment pending)', () => {
     it('updates the same membership when the same plan is selected', () => {
       const action = planMembershipAction({
@@ -141,6 +222,7 @@ describe('planMembershipAction', () => {
           startDate: '2026-04-29',
           amountPaid: 0,
         },
+        scheduledUnpaid: null,
         latestNonCancelledEnd: '2026-07-29',
         plan: PLAN_3MO,
         amount: 2700,
@@ -170,6 +252,7 @@ describe('planMembershipAction', () => {
           startDate: '2026-04-29',
           amountPaid: 0,
         },
+        scheduledUnpaid: null,
         latestNonCancelledEnd: '2027-04-29', // member added with 12-month plan
         plan: PLAN_1MO,
         amount: 1000,
@@ -196,6 +279,7 @@ describe('planMembershipAction', () => {
           startDate: '2026-04-15', // member started 14 days ago
           amountPaid: 0,
         },
+        scheduledUnpaid: null,
         latestNonCancelledEnd: '2027-04-15',
         plan: PLAN_1MO,
         amount: 1000,
@@ -217,6 +301,7 @@ describe('planMembershipAction', () => {
           startDate: '2026-04-29',
           amountPaid: 0,
         },
+        scheduledUnpaid: null,
         latestNonCancelledEnd: '2027-04-29',
         plan: PLAN_12MO, // ₹9000 default
         amount: 8000, // owner gave a ₹1000 discount

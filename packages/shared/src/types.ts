@@ -2,7 +2,7 @@
 
 export type PaymentMethod = 'cash' | 'upi' | 'other';
 export type MembershipStatus = 'active' | 'expired' | 'cancelled';
-export type MemberStatus = 'overdue' | 'expiring' | 'active' | 'payment_pending';
+export type MemberStatus = 'overdue' | 'expiring' | 'scheduled' | 'active' | 'payment_pending';
 
 export interface Owner {
   id: string;
@@ -80,7 +80,7 @@ export interface MemberListItem {
   plan: Plan | null; // plan of currentMembership
   status: MemberStatus;
   daysOverdue: number | null; // when status = 'overdue'
-  daysRemaining: number | null; // when status = 'expiring' or 'active'
+  daysRemaining: number | null; // when status = 'expiring'/'active' or days until 'scheduled'
   amountDue: number | null; // when status = 'overdue' or 'payment_pending'
 }
 
@@ -90,6 +90,7 @@ export interface MembersListResponse {
     all: number;
     overdue: number; // includes payment_pending
     expiring: number;
+    scheduled: number;
     active: number;
   };
 }

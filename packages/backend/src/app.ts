@@ -1,6 +1,7 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import { z } from 'zod';
+import type { Membership as DbMembership } from '@prisma/client';
 import type {
   MemberDetailResponse,
   MemberListItem,
@@ -13,6 +14,7 @@ import { newId } from './lib/ids.js';
 import { computeStatus } from './lib/status.js';
 import { clerkAuth, getAuthenticatedOwner, getOwnerGym } from './lib/auth.js';
 import { planMembershipAction } from './lib/payment-policy.js';
+import { toErrorResponse } from './lib/http-errors.js';
 import {
   toGym,
   toMember,
@@ -21,6 +23,21 @@ import {
   toPlan,
 } from './lib/serialize.js';
 
+function membershipContext(memberships: DbMembership[], today: string) {
+  const nonCancelled = memberships.filter((m) => m.status !== 'cancelled');
+  const active = nonCancelled.find(
+    (m) => m.startDate <= today && today < m.endDate && m.status === 'active',
+  );
+  const scheduled = nonCancelled.find((m) => m.startDate > today);
+  const past = nonCancelled.filter((m) => m.endDate <= today);
+  const current = active ?? scheduled ?? past[past.length - 1] ?? null;
+  const queued = nonCancelled.filter((m) => m.startDate > today && m.id !== current?.id);
+  const scheduledUnpaid = nonCancelled.find(
+    (m) => m.startDate > today && m.amountPaid === 0 && m.amountDue > 0,
+  );
+  return { current, queued, scheduledUnpaid };
+}
+
 async function buildListItem(memberId: string, gracePeriodDays: number): Promise<MemberListItem> {
   const today = iso(todayLocal());
   const member = (await prisma.member.findUnique({ where: { id: memberId } }))!;
@@ -28,10 +45,7 @@ async function buildListItem(memberId: string, gracePeriodDays: number): Promise
     where: { memberId, NOT: { status: 'cancelled' } },
     orderBy: { startDate: 'asc' },
   });
-  const active = memberships.find((m) => m.startDate <= today && today < m.endDate);
-  const past = memberships.filter((m) => m.endDate <= today);
-  const current = active ?? past[past.length - 1] ?? null;
-  const queued = memberships.filter((m) => m.startDate > today);
+  const { current, queued } = membershipContext(memberships, today);
   const plan = current ? await prisma.plan.findUnique({ where: { id: current.planId } }) : null;
   const s = computeStatus(
     current ? toMembership(current) : null,
@@ -51,11 +65,18 @@ async function buildListItem(memberId: string, gracePeriodDays: number): Promise
 }
 
 function sortListItems(items: MemberListItem[]): MemberListItem[] {
-  const rank: Record<string, number> = { overdue: 0, payment_pending: 1, expiring: 2, active: 3 };
+  const rank: Record<string, number> = {
+    overdue: 0,
+    payment_pending: 1,
+    expiring: 2,
+    scheduled: 3,
+    active: 4,
+  };
   return [...items].sort((a, b) => {
     if (rank[a.status] !== rank[b.status]) return rank[a.status] - rank[b.status];
     if (a.status === 'overdue') return (b.daysOverdue ?? 0) - (a.daysOverdue ?? 0);
     if (a.status === 'expiring') return (a.daysRemaining ?? 0) - (b.daysRemaining ?? 0);
+    if (a.status === 'scheduled') return (a.daysRemaining ?? 0) - (b.daysRemaining ?? 0);
     return a.member.name.localeCompare(b.member.name);
   });
 }
@@ -79,10 +100,12 @@ export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({ logger: true });
   await app.register(cors, { origin: true });
 
-  app.setErrorHandler((err, _req, reply) => {
-    const status = (err as { statusCode?: number }).statusCode ?? 500;
-    const code = (err as { code?: string }).code;
-    reply.code(status).send({ error: err.message, ...(code ? { code } : {}) });
+  app.setErrorHandler((err, req, reply) => {
+    const response = toErrorResponse(err);
+    if (response.shouldLog) {
+      req.log.error({ err }, response.body.code ?? 'request failed');
+    }
+    reply.code(response.status).send(response.body);
   });
 
   // Public endpoints (no Clerk auth required).
@@ -93,7 +116,10 @@ export async function buildApp(): Promise<FastifyInstance> {
     await clerkAuth(req);
   });
 
-  app.get('/health', async () => ({ ok: true }));
+  app.get('/health', async () => {
+    await prisma.$queryRaw`SELECT 1`;
+    return { ok: true };
+  });
 
   // ---- members ----
   app.get('/members', async (req): Promise<MembersListResponse> => {
@@ -107,6 +133,7 @@ export async function buildApp(): Promise<FastifyInstance> {
         all: sorted.length,
         overdue: sorted.filter((i) => i.status === 'overdue' || i.status === 'payment_pending').length,
         expiring: sorted.filter((i) => i.status === 'expiring').length,
+        scheduled: sorted.filter((i) => i.status === 'scheduled').length,
         active: sorted.filter((i) => i.status === 'active').length,
       },
     };
@@ -124,12 +151,7 @@ export async function buildApp(): Promise<FastifyInstance> {
       where: { memberId: member.id },
       orderBy: { startDate: 'asc' },
     });
-    const active = memberships.find(
-      (m) => m.startDate <= today && today < m.endDate && m.status !== 'cancelled',
-    );
-    const past = memberships.filter((m) => m.endDate <= today);
-    const current = active ?? past[past.length - 1] ?? null;
-    const queued = memberships.filter((m) => m.startDate > today && m.status !== 'cancelled');
+    const { current, queued } = membershipContext(memberships, today);
     const plan = current ? await prisma.plan.findUnique({ where: { id: current.planId } }) : null;
     const s = computeStatus(
       current ? toMembership(current) : null,
@@ -270,6 +292,9 @@ export async function buildApp(): Promise<FastifyInstance> {
     const activeNow = memberships.find(
       (m) => m.startDate <= today && today < m.endDate && m.status === 'active',
     );
+    const scheduledUnpaid = memberships.find(
+      (m) => m.startDate > today && m.status !== 'cancelled' && m.amountPaid === 0 && m.amountDue > 0,
+    );
     // Issue #5: queue renewals after the LATEST non-cancelled end (which may
     // be a queued membership beyond activeNow.endDate), not after activeNow.
     // Otherwise multiple advance renewals would overlap each other.
@@ -287,6 +312,12 @@ export async function buildApp(): Promise<FastifyInstance> {
             id: activeNow.id,
             startDate: activeNow.startDate,
             amountPaid: activeNow.amountPaid,
+          }
+        : null,
+      scheduledUnpaid: scheduledUnpaid
+        ? {
+            id: scheduledUnpaid.id,
+            startDate: scheduledUnpaid.startDate,
           }
         : null,
       latestNonCancelledEnd,

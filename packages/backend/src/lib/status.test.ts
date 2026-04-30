@@ -43,6 +43,29 @@ describe('computeStatus', () => {
     expect(r.amountDue).toBe(2700);
   });
 
+  it('returns scheduled before a future-start unpaid membership begins', () => {
+    const r = computeStatus(
+      membership({ startDate: '2026-05-10', endDate: '2026-06-10', amountPaid: 0 }),
+      [],
+      GRACE,
+      2700,
+    );
+    expect(r.status).toBe('scheduled');
+    expect(r.daysRemaining).toBe(14);
+    expect(r.amountDue).toBeNull();
+  });
+
+  it('returns scheduled before a future-start paid membership begins', () => {
+    const r = computeStatus(
+      membership({ startDate: '2026-05-10', endDate: '2026-06-10', amountPaid: 2700 }),
+      [],
+      GRACE,
+      2700,
+    );
+    expect(r.status).toBe('scheduled');
+    expect(r.daysRemaining).toBe(14);
+  });
+
   it('returns active when end date is well in the future', () => {
     const r = computeStatus(membership({ endDate: '2026-06-30' }), [], GRACE, 2700);
     expect(r.status).toBe('active');
