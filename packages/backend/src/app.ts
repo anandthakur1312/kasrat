@@ -156,7 +156,10 @@ export async function buildApp(): Promise<FastifyInstance> {
     return {
       member: toMember(member),
       currentMembership: current ? toMembership(current) : null,
-      queuedMemberships: queued.map(toMembership),
+      queuedMemberships: queued.map((m) => ({
+        ...toMembership(m),
+        planName: planById.get(m.planId)?.name ?? '',
+      })),
       plan: plan ? toPlan(plan) : null,
       status: s.status,
       daysOverdue: s.daysOverdue,
@@ -267,16 +270,26 @@ export async function buildApp(): Promise<FastifyInstance> {
     const activeNow = memberships.find(
       (m) => m.startDate <= today && today < m.endDate && m.status === 'active',
     );
+    // Issue #5: queue renewals after the LATEST non-cancelled end (which may
+    // be a queued membership beyond activeNow.endDate), not after activeNow.
+    // Otherwise multiple advance renewals would overlap each other.
+    const latestNonCancelledEnd =
+      memberships
+        .filter((m) => m.status !== 'cancelled')
+        .reduce<string | null>(
+          (max, m) => (max === null || m.endDate > max ? m.endDate : max),
+          null,
+        );
 
     const action = planMembershipAction({
       activeNow: activeNow
         ? {
             id: activeNow.id,
             startDate: activeNow.startDate,
-            endDate: activeNow.endDate,
             amountPaid: activeNow.amountPaid,
           }
         : null,
+      latestNonCancelledEnd,
       plan: { id: plan.id, durationMonths: plan.durationMonths, price: plan.price },
       amount: body.amount,
       paidOn: body.paidOn,

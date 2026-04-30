@@ -97,7 +97,7 @@ export interface MembersListResponse {
 export interface MemberDetailResponse {
   member: Member;
   currentMembership: Membership | null;
-  queuedMemberships: Membership[];
+  queuedMemberships: Array<Membership & { planName: string }>;
   plan: Plan | null;
   status: MemberStatus;
   daysOverdue: number | null;
