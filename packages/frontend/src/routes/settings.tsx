@@ -3,10 +3,30 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
+import { slugifySlugInput, validateSlug, type SlugValidationCode } from '@gym-app/shared/reservedSlugs';
 import type { Gym } from '@gym-app/shared/types';
 import { api } from '@/lib/api';
+import { ApiError } from '@/lib/realApi';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { TimingsEditor } from '@/components/timings-editor';
+
+function slugErrorKey(code: SlugValidationCode | 'SLUG_UNAVAILABLE'): string {
+  return code === 'SLUG_RESERVED'
+    ? 'common.slugErrors.reserved'
+    : code === 'SLUG_UNAVAILABLE'
+      ? 'common.slugErrors.unavailable'
+      : 'common.slugErrors.format';
+}
+
+function apiSlugErrorCode(err: unknown): SlugValidationCode | 'SLUG_UNAVAILABLE' | null {
+  if (err instanceof ApiError && err.code?.startsWith('SLUG_')) {
+    return err.code as SlugValidationCode | 'SLUG_UNAVAILABLE';
+  }
+  if (err instanceof Error && err.message.startsWith('SLUG_')) {
+    return err.message as SlugValidationCode | 'SLUG_UNAVAILABLE';
+  }
+  return null;
+}
 
 export default function SettingsRoute() {
   const { t } = useTranslation();
@@ -48,8 +68,15 @@ export default function SettingsRoute() {
     };
   }, []);
 
+  const slugValidation = validateSlug(slug);
+  const slugIsValid = slugValidation.ok;
+  const normalizedSlug = slugValidation.ok ? slugValidation.slug : slug;
+  const slugChanged = normalizedSlug !== originalSlug;
+  const slugError = slugValidation.ok ? null : t(slugErrorKey(slugValidation.code));
+
   async function handleSaveClick() {
-    if (slug !== originalSlug) {
+    if (!slugIsValid) return;
+    if (slugChanged) {
       setConfirmSlugOpen(true);
       return;
     }
@@ -57,13 +84,13 @@ export default function SettingsRoute() {
   }
 
   async function handleSave() {
-    if (!gym) return;
+    if (!gym || !slugIsValid) return;
     setConfirmSlugOpen(false);
     setSaving(true);
     try {
       const updated = await api.updateGym({
         name: name.trim(),
-        slug: slug.trim(),
+        slug: normalizedSlug,
         address,
         timings,
         contactPhone: contactPhone.trim(),
@@ -74,14 +101,13 @@ export default function SettingsRoute() {
       setGym(updated);
       setOriginalSlug(updated.slug);
       toast.success(t('settings.toast.saved'));
-    } catch {
-      toast.error(t('settings.toast.failed'));
+    } catch (err) {
+      const slugCode = apiSlugErrorCode(err);
+      toast.error(slugCode ? t(slugErrorKey(slugCode)) : t('settings.toast.failed'));
     } finally {
       setSaving(false);
     }
   }
-
-  const slugChanged = slug !== originalSlug;
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -118,10 +144,15 @@ export default function SettingsRoute() {
                 <input
                   type="text"
                   value={slug}
-                  onChange={(e) => setSlug(e.target.value)}
+                  onChange={(e) => setSlug(slugifySlugInput(e.target.value))}
                   className="flex-1 h-10 bg-background px-3 text-sm focus:outline-none"
                 />
               </div>
+              {slugError && (
+                <div className="mt-1.5 rounded-md bg-overdue-bg text-overdue-text text-xs px-3 py-2">
+                  {slugError}
+                </div>
+              )}
               {slugChanged && (
                 <div className="mt-1.5 rounded-md bg-expiring-bg text-expiring-text text-xs px-3 py-2">
                   {t('settings.slugWarning')}
@@ -200,7 +231,7 @@ export default function SettingsRoute() {
         <button
           type="button"
           onClick={handleSaveClick}
-          disabled={loading || saving}
+          disabled={loading || saving || !slugIsValid}
           className="w-full h-11 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {saving ? t('common.loading') : t('settings.save')}
@@ -210,7 +241,7 @@ export default function SettingsRoute() {
       <ConfirmDialog
         open={confirmSlugOpen}
         title={t('settings.slugConfirm.title')}
-        body={t('settings.slugConfirm.body', { oldSlug: originalSlug, newSlug: slug })}
+        body={t('settings.slugConfirm.body', { oldSlug: originalSlug, newSlug: normalizedSlug })}
         confirmLabel={t('settings.slugConfirm.confirm')}
         cancelLabel={t('common.cancel')}
         destructive

@@ -8,7 +8,12 @@
     "back": "Back",
     "loading": "Loading…",
     "save": "Save",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "slugErrors": {
+      "format": "Use 2–32 lowercase letters, numbers, or hyphens. It cannot start/end with a hyphen.",
+      "reserved": "This public URL is reserved. Please choose another one.",
+      "unavailable": "This public URL is already taken. Please choose another one."
+    }
   },
   "timings": {
     "days": "Days",

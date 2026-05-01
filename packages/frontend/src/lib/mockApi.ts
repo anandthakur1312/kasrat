@@ -14,9 +14,11 @@ import type {
   Plan,
   PublicGymResponse,
   RecordPaymentRequest,
+  SlugCheckResponse,
   UpdateGymRequest,
   UpdatePlanRequest,
 } from '@gym-app/shared/types';
+import { validateSlug } from '@gym-app/shared/reservedSlugs';
 import { dateHelpers, mockState, nextId } from './mockData';
 
 const { TODAY, iso, addDays, addMonths } = dateHelpers;
@@ -426,7 +428,12 @@ export const mockApi = {
 
   async updateGym(req: UpdateGymRequest): Promise<Gym> {
     await delay();
-    Object.assign(mockState.gym, req);
+    const slug = req.slug !== undefined ? validateSlug(req.slug) : null;
+    if (slug && !slug.ok) throw new Error(slug.code);
+    Object.assign(mockState.gym, {
+      ...req,
+      ...(slug?.ok ? { slug: slug.slug } : {}),
+    });
     return { ...mockState.gym };
   },
 
@@ -441,9 +448,11 @@ export const mockApi = {
 
   async createGym(req: CreateGymRequest): Promise<Gym> {
     await delay();
+    const slug = validateSlug(req.slug);
+    if (!slug.ok) throw new Error(slug.code);
     Object.assign(mockState.gym, {
       name: req.name,
-      slug: req.slug,
+      slug: slug.slug,
       address: req.address,
       timings: req.timings,
       contactPhone: req.contactPhone,
@@ -464,6 +473,18 @@ export const mockApi = {
       });
     }
     return { ...mockState.gym };
+  },
+
+  async checkSlug(slug: string): Promise<SlugCheckResponse> {
+    await delay();
+    const result = validateSlug(slug);
+    if (!result.ok) return { slug: result.slug, available: false, code: result.code };
+    const available = mockState.gym.slug !== result.slug;
+    return {
+      slug: result.slug,
+      available,
+      ...(available ? {} : { code: 'SLUG_UNAVAILABLE' as const }),
+    };
   },
 };
 

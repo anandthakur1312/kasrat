@@ -10,6 +10,7 @@ import type {
   Plan,
   PublicGymResponse,
   RecordPaymentRequest,
+  SlugCheckResponse,
   UpdateGymRequest,
   UpdateMemberRequest,
   UpdatePlanRequest,
@@ -96,6 +97,8 @@ export const realApi = {
     request<Gym>('/gym', { method: 'PATCH', body: JSON.stringify(req) }),
   createGym: (req: CreateGymRequest) =>
     request<Gym>('/gyms', { method: 'POST', body: JSON.stringify(req) }),
+  checkSlug: (slug: string) =>
+    request<SlugCheckResponse>(`/public/slugs/check?slug=${encodeURIComponent(slug)}`),
   getPublicGym: (slug: string) =>
     request<PublicGymResponse>(`/public/gyms/${encodeURIComponent(slug)}`),
 };

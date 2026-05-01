@@ -118,6 +118,12 @@ export interface PublicGymResponse {
   >;
 }
 
+export interface SlugCheckResponse {
+  slug: string;
+  available: boolean;
+  code?: 'SLUG_INVALID_FORMAT' | 'SLUG_RESERVED' | 'SLUG_UNAVAILABLE';
+}
+
 // Request shapes
 
 export interface CreateGymRequest {
