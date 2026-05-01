@@ -17,6 +17,7 @@ import { clerkAuth, getAuthenticatedOwner, getOwnerGym } from './lib/auth.js';
 import { planMembershipAction } from './lib/payment-policy.js';
 import { toErrorResponse } from './lib/http-errors.js';
 import { validateSlug } from './lib/slug.js';
+import { corsOrigin } from './lib/cors.js';
 import {
   toGym,
   toMember,
@@ -134,7 +135,7 @@ async function assertSlugAvailable(slug: string, currentGymId?: string) {
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({ logger: true });
-  await app.register(cors, { origin: true });
+  await app.register(cors, { origin: corsOrigin });
 
   app.setErrorHandler((err, req, reply) => {
     const response = toErrorResponse(err);

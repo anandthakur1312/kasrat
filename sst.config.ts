@@ -49,6 +49,7 @@ export default $config({
       environment: {
         DATABASE_URL: databaseUrl.value,
         CLERK_SECRET_KEY: clerkSecretKey.value,
+        CORS_ALLOWED_ORIGINS: "https://kasrat.pages.dev,https://kasrat.in,https://www.kasrat.in",
         NODE_ENV: "production",
       },
       // Prisma + Lambda bundling. Three things have to land in the zip:
