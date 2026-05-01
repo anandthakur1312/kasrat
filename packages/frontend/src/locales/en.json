@@ -255,6 +255,8 @@
     "titleAdvance": "Add advance renewal",
     "titleScheduled": "Record advance payment",
     "plan": "Plan",
+    "selectedPlan": "Selected plan",
+    "changePlan": "Change plan",
     "amount": "Amount",
     "date": "Payment date",
     "method": "Method",
@@ -279,7 +281,8 @@
     "confirmCash": "Confirm cash received",
     "toast": {
       "recorded": "Payment recorded ✓",
-      "failed": "Could not record payment"
+      "failed": "Could not record payment",
+      "futureDate": "Payment date cannot be in the future"
     }
   }
 }

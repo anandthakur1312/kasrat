@@ -489,18 +489,20 @@ client → server → DB → server → client) so timezone arithmetic happens
 in exactly one place.
 Booleans, integers and timestamps use Prisma's native types.
 
-### 7.3 Routes — `src/server.ts`
+### 7.3 Routes — `src/app.ts`
 
 All in one file — short enough to skim in 5 minutes. Notable behavior:
 
-- `getSingleGym()` returns `prisma.gym.findFirst()` because the pilot
-  has one gym. Multi-tenant filtering goes here once auth lands.
+- Protected routes use `getOwnerGym(req)` so every gym/member/plan lookup
+  is scoped to the authenticated owner's gym.
 - `POST /payments` mirrors SPEC §7.3:
-  - if there's an active membership with `amountPaid === 0` → attach
-    the payment to it (this is the new-member-just-paid case),
-  - else if there's an active membership → queue a new membership
-    starting `endDate + 1 day`,
-  - else → create a fresh membership starting `paidOn`.
+  - future payment dates are rejected,
+  - if there's an unpaid active or scheduled membership → attach the
+    payment to it while preserving the selected coverage start date,
+  - else if the member already has active or queued coverage → queue a
+    renewal starting at the latest non-cancelled `endDate` (end dates
+    are exclusive, so this keeps coverage continuous),
+  - else → create a fresh membership starting on `paidOn`.
 - `PATCH /plans/:id` only updates the plan; existing memberships keep
   the price they were created with (SPEC §7.6).
 - `PATCH /members/:id` updates a member's name/phone (used by the
@@ -508,14 +510,18 @@ All in one file — short enough to skim in 5 minutes. Notable behavior:
 - `DELETE /members/:id` is a **soft delete** — flips `isActive=false`.
   Memberships and payment history are preserved so reports stay
   accurate.
-- `POST /gyms` is the first-time-setup endpoint — overwrites the single
-  existing gym row + replaces its plans. Will need a real "create
-  another gym" path in multi-tenant mode.
+- `POST /gyms` is the first-time setup endpoint. It creates the gym and
+  initial plans in one transaction, and returns `409 GYM_ALREADY_CONFIGURED`
+  if the owner already has a gym.
+- `GET /public/slugs/check` validates format, reserved words, and live
+  availability for setup/settings.
 - `GET /public/gyms/:slug` is the only unauthenticated endpoint — the
   public payment page. It returns *only* the public-safe fields.
 
-CORS is wired with `@fastify/cors` set to `origin: true`, fine for dev.
-Lock it down before production deploy.
+CORS is wired through `packages/backend/src/lib/cors.ts`. Production
+allows Kasrat's own domains, Cloudflare Pages previews for this project,
+and any comma-separated origins in `CORS_ALLOWED_ORIGINS`; localhost is
+allowed only outside `NODE_ENV=production`.
 
 ### 7.4 Error handling
 
@@ -725,9 +731,19 @@ suffix (i18next standard).
 
 ### 9.9 CORS errors in the browser
 
-`@fastify/cors` is set to `origin: true` (allow all). If you've added
-a stricter config, make sure the dev origin (`http://localhost:5173`)
-is allowed. Check the Network tab — preflight `OPTIONS` should return 204.
+CORS is owned by Fastify, not the Lambda Function URL layer. The allowlist
+lives in `packages/backend/src/lib/cors.ts`:
+
+- production allows `https://kasrat.pages.dev`, `https://*.kasrat.pages.dev`,
+  `https://kasrat.in`, `https://www.kasrat.in`, plus any exact origins in
+  `CORS_ALLOWED_ORIGINS`;
+- local development allows localhost/loopback origins only when
+  `NODE_ENV !== "production"`.
+
+If the browser reports a CORS failure, first check the request `Origin`
+header against that allowlist and confirm the deployed Lambda has the
+expected `CORS_ALLOWED_ORIGINS` value. Preflight `OPTIONS` should return
+204 from Fastify.
 
 ---
 
@@ -736,17 +752,13 @@ is allowed. Check the Network tab — preflight `OPTIONS` should return 204.
 These were out of scope for the pilot or deferred to a later phase.
 Listed so you don't think they were missed:
 
-- **End-to-end tests.** Vitest covers the status-computation logic on
-  the backend (8 unit tests in `packages/backend/src/lib/status.test.ts`).
-  No Playwright / browser tests yet.
+- **End-to-end tests.** Vitest covers backend policy/helpers, but there
+  are no Playwright / browser tests yet.
 - **PWA / offline / push.** No service worker, no manifest, no favicon.
 - **Dark mode toggle.** CSS variables are wired, no toggle UI yet.
-- **Production deploy executed.** SST config and Cloudflare Pages
-  workflow are in place (see §11), but no resources have been
-  provisioned yet. First deploy is gated on creating Neon + AWS
-  accounts.
-- **Slug uniqueness live check + reserved-slug list.** Decided
-  ([DECISIONS.md §10 Q9](./DECISIONS.md)) but not implemented yet.
+- **Custom domain + production Clerk instance.** The app is live on
+  `kasrat.pages.dev`; `kasrat.in` and Clerk Production keys are deferred
+  until the first physical QR poster is ready.
 
 ---
 
@@ -755,7 +767,7 @@ Listed so you don't think they were missed:
 The locked architecture (see [DECISIONS.md](./DECISIONS.md)):
 
 - **Frontend** → Cloudflare Pages
-- **Backend** → AWS Lambda + API Gateway via SST, ap-south-1 (Mumbai)
+- **Backend** → AWS Lambda Function URL via SST, ap-south-1 (Mumbai)
 - **Database** → Neon Postgres (ap-southeast-1 Singapore — Mumbai isn't on Neon free tier yet)
 - **Auth** → Clerk (production keys)
 
@@ -789,7 +801,7 @@ npx sst secret set ClerkSecretKey "$CLERK_SECRET_KEY"    --stage prod
 DATABASE_URL="$NEON_DATABASE_URL" \
   npx prisma migrate deploy --schema packages/backend/prisma/schema.prisma
 
-# Provision Lambda + API Gateway + IAM in ap-south-1.
+# Provision Lambda + Function URL + IAM in ap-south-1.
 npm run deploy
 
 # SST prints the Lambda Function URL (something like

@@ -96,8 +96,8 @@
 - **Justification:** Clerk's free tier (10k MAU) covers the pilot for years. SOC 2 Type II compliance, modern React components that render cleanly at 375px, and built-in Hindi i18n. Vendor lock-in mitigated by storing only `clerk_user_id` (a single column) on `Owner` — every other foreign key in the DB references `Owner.id`, our internal ID.
 - **See also:** §5 for the full multi-tenancy + JIT-sync design that hangs off this choice.
 
-### 2.7 Compute: AWS Lambda + API Gateway via SST 🟡
-- **What:** Backend deploys to Lambda behind API Gateway, infrastructure-as-code via [SST](https://sst.dev).
+### 2.7 Compute: AWS Lambda Function URL via SST 🟡
+- **What:** Backend deploys to Lambda behind a Lambda Function URL, infrastructure-as-code via [SST](https://sst.dev).
 - **Why:** Scale-to-zero matches our usage profile; SST hides the CloudFormation boilerplate.
 - **Justification:** Pilot traffic is tiny and bursty (mornings/evenings at the front desk). Lambda's per-request billing means literally cents/month at this scale. Only revisit if we need long-running processes (we don't yet).
 
@@ -386,10 +386,10 @@
 - **Why:** SQLite needs no install; Postgres has features (RLS, JSONB, full-text) we'll grow into.
 - **Justification:** Prisma abstracts both with the same query API. We do lose JSONB, partial indexes, and a few other Postgres-isms during dev — but the schema in v1 doesn't use any of them. When we adopt one, we adopt Postgres locally too.
 
-### 7.10 CORS open in dev, lock down before prod 🟡
-- **What:** `@fastify/cors` is set to `origin: true` (allow all). Documented in REPORT §7.3 to lock down before prod.
-- **Why:** Don't fight CORS during dev.
-- **Justification:** With separate Vite (5173) and Fastify (3001) ports, every dev request is cross-origin. `origin: true` is a deliberate dev-time trade-off, not laziness — but it's a pre-prod TODO.
+### 7.10 CORS owned by Fastify with a production allowlist 🔒
+- **What:** `@fastify/cors` uses `packages/backend/src/lib/cors.ts`: production allows Kasrat domains, Kasrat Cloudflare Pages previews, and exact origins from `CORS_ALLOWED_ORIGINS`; localhost is allowed only outside production.
+- **Why:** Browser access should be limited in production, while local dev still works across Vite/Fastify ports.
+- **Justification:** The Lambda Function URL CORS layer is disabled (`url.cors: false`) so Fastify is the single source of headers in every environment.
 
 ---
 
@@ -448,25 +448,25 @@
 
 ## 10. Original 9-question queue (all closed)
 
-The Phase 8.5 wrap-up flagged a queue of 9 still-open decisions. All 9 are now resolved (decided + reasoned). Most are also **shipped** — the code is in `master`. Two are decided but not yet implemented; those are tracked here so they don't get lost.
+The Phase 8.5 wrap-up flagged a queue of 9 still-open decisions. All 9 are now resolved (decided + reasoned), and the table below records which ones are already shipped versus still deferred.
 
 | # | Question | Decision | Implementation |
 |---|---|---|---|
 | 1 | Frontend host | 🔒 Cloudflare Pages | ⚙ Live at https://kasrat.pages.dev |
-| 2 | Backend host | 🔒 AWS Lambda + API Gateway via SST in `ap-south-1` | ⚙ Live, see [REPORT §1.5](./REPORT.md) |
+| 2 | Backend host | 🔒 AWS Lambda Function URL via SST in `ap-south-1` | ⚙ Live, see [REPORT §1.5](./REPORT.md) |
 | 3 | Database | 🔒 Neon Postgres — `main` in prod, `dev` branch for local; SQLite dropped (§2.5) | ⚙ Live |
 | 4 | Auth | 🔒 Clerk | ⚙ Shipped (Development instance — see §5.10 for the Production-instance migration plan) |
 | 5 | Repo rename | 🔒 `fitness-club` → `kasrat` | ⚙ Done |
 | 6 | CI/CD on PR / push to master | 🔒 GitHub Actions (typecheck + lint + test on PR) + Cloudflare Pages auto-preview; manual `sst deploy` and `prisma migrate deploy` for backend | ⚙ Workflow file at `.github/workflows/ci.yml` |
 | 7 | Backups | 🔒 Neon's built-in PITR (7-day on free tier); revisit at scale | ⚙ Active automatically (Neon default) |
 | 8 | Error tracking | 🔒 Sentry (free tier) on frontend only; AWS CloudWatch for backend | 📋 **Decided, not yet implemented** — Sentry SDK not installed yet. CloudWatch is automatic via Lambda. |
-| 9 | Slug uniqueness check + reserved-slug list | 🔒 DB UNIQUE constraint + live availability check (`GET /public/slugs/check?slug=...`) + reserved list in `packages/shared/src/reservedSlugs.ts` | 📋 **Decided, not yet implemented** — endpoint and shared module don't exist yet. The decision text below in §11 is the spec for whoever implements it. |
+| 9 | Slug uniqueness check + reserved-slug list | 🔒 DB UNIQUE constraint + live availability check (`GET /public/slugs/check?slug=...`) + reserved list in `packages/shared/src/reservedSlugs.ts` | ⚙ Shipped |
 
 ---
 
 ## 11. Reserved slug list
 
-Slugs that **cannot** be claimed as gym slugs. Will live in `packages/shared/src/reservedSlugs.ts` (📋 not yet implemented — see §10 Q9 status) so frontend and backend share one source of truth.
+Slugs that **cannot** be claimed as gym slugs. The frontend uses `packages/shared/src/reservedSlugs.ts`; the backend mirrors the same list in `packages/backend/src/lib/slug.ts` so the production Lambda bundle does not runtime-import shared TypeScript.
 
 ### Format rules (enforced before checking the list)
 

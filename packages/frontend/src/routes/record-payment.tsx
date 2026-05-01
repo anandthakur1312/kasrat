@@ -96,6 +96,9 @@ export default function RecordPaymentRoute() {
   }, [detail]);
 
   const selectedPlan = plans.find((p) => p.id === planId) ?? null;
+  const changePlans = selectedPlan ? plans.filter((p) => p.id !== selectedPlan.id) : plans;
+  const latestAllowedPaidOn = todayISO();
+  const isFuturePaidOn = paidOn > latestAllowedPaidOn;
   const renewalPreview = useMemo(() => {
     if (!isAdvanceRenewal || !latestNonCancelledEnd || !selectedPlan) return null;
     const start = parseDate(latestNonCancelledEnd);
@@ -117,6 +120,10 @@ export default function RecordPaymentRoute() {
 
   async function handleConfirm() {
     if (!member || !planId || submitting) return;
+    if (!paidOn || isFuturePaidOn) {
+      toast.error(t('pay.toast.futureDate'));
+      return;
+    }
     const numericAmount = Number(amount);
     if (Number.isNaN(numericAmount) || numericAmount < 0) return;
     setSubmitting(true);
@@ -220,18 +227,29 @@ export default function RecordPaymentRoute() {
           )}
 
           {/* Plan picker */}
-          <section>
-            <Label>{t('pay.plan')}</Label>
-            <div className="grid gap-2">
-              {plans.map((p) => (
-                <PlanTile
-                  key={p.id}
-                  plan={p}
-                  selected={p.id === planId}
-                  onClick={() => handlePlanChange(p.id)}
-                />
-              ))}
-            </div>
+          <section className="space-y-3">
+            {selectedPlan && (
+              <div>
+                <Label>{t('pay.selectedPlan')}</Label>
+                <PlanTile plan={selectedPlan} selected />
+              </div>
+            )}
+
+            {changePlans.length > 0 && (
+              <div>
+                <Label>{selectedPlan ? t('pay.changePlan') : t('pay.plan')}</Label>
+                <div className="grid gap-2">
+                  {changePlans.map((p) => (
+                    <PlanTile
+                      key={p.id}
+                      plan={p}
+                      selected={false}
+                      onClick={() => handlePlanChange(p.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
 
           {/* Amount + Date row */}
@@ -257,6 +275,8 @@ export default function RecordPaymentRoute() {
                 type="date"
                 value={paidOn}
                 onChange={(e) => setPaidOn(e.target.value)}
+                max={latestAllowedPaidOn}
+                aria-invalid={isFuturePaidOn}
                 className="w-full h-10 rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
               />
             </div>
@@ -315,7 +335,7 @@ export default function RecordPaymentRoute() {
         <button
           type="button"
           onClick={handleConfirm}
-          disabled={submitting || loading || !planId}
+          disabled={submitting || loading || !planId || !paidOn || isFuturePaidOn}
           className="w-full h-11 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {method === 'cash' ? t('pay.confirmCash') : t('pay.confirmReceived')}
@@ -340,26 +360,37 @@ function PlanTile({
 }: {
   plan: Plan;
   selected: boolean;
-  onClick: () => void;
+  onClick?: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const language = i18n.resolvedLanguage ?? i18n.language;
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'flex items-center justify-between rounded-md px-4 py-3 text-left transition-colors',
-        selected
-          ? 'bg-info-bg border-2 border-info-border text-info-text'
-          : 'bg-card border border-border hover:bg-secondary',
-      )}
-    >
+  const className = cn(
+    'flex w-full items-center justify-between rounded-md px-4 py-3 text-left transition-colors',
+    selected
+      ? 'bg-info-bg border-2 border-info-border text-info-text'
+      : 'bg-card border border-border hover:bg-secondary',
+  );
+  const content = (
+    <>
       <span className="text-sm font-medium">{plan.name}</span>
       <span className={cn('text-sm', selected ? 'font-semibold' : 'text-muted-foreground')}>
         {t('common.currency')}
         {formatCurrency(plan.price, language)}
       </span>
+    </>
+  );
+
+  if (!onClick) {
+    return <div className={className}>{content}</div>;
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={className}
+    >
+      {content}
     </button>
   );
 }

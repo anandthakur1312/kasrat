@@ -22,7 +22,7 @@ Custom domain (`kasrat.in`) deferred until the first physical QR poster is print
 
 ## Status
 
-✅ Phases 1–8.5 done. The product is **deployed to production** and ready for pilot. Last open item: ⬜ Phase 9 — sit at the family gym in Sagar for a day, watch how it's actually used, fix what breaks.
+✅ Phases 1–8.6 done. The product is **deployed to production** and ready for pilot. Last open item: ⬜ Phase 9 — sit at the family gym in Sagar for a day, watch how it's actually used, fix what breaks.
 
 Full phase list lives in [SPEC.md §3](./SPEC.md).
 
@@ -44,7 +44,7 @@ Full phase list lives in [SPEC.md §3](./SPEC.md).
 | Tests | [Vitest](https://vitest.dev) |
 | Database | [Neon](https://neon.tech) Serverless Postgres (`ap-southeast-1` Singapore) |
 | Auth | [Clerk](https://clerk.com) — Google OAuth + Email/Password |
-| Compute | [AWS Lambda](https://aws.amazon.com/lambda) + [API Gateway](https://aws.amazon.com/api-gateway) via [SST](https://sst.dev) (`ap-south-1` Mumbai) |
+| Compute | [AWS Lambda](https://aws.amazon.com/lambda) Function URL via [SST](https://sst.dev) (`ap-south-1` Mumbai) |
 | Frontend host | [Cloudflare Pages](https://pages.cloudflare.com) |
 | DNS / SSL | [Cloudflare](https://www.cloudflare.com/dns) (free) |
 | File storage (v2) | [Amazon S3](https://aws.amazon.com/s3) — reserved for photos/videos |
