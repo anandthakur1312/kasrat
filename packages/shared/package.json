@@ -7,6 +7,7 @@
   "types": "./src/types.ts",
   "exports": {
     ".": "./src/types.ts",
-    "./types": "./src/types.ts"
+    "./types": "./src/types.ts",
+    "./reservedSlugs": "./src/reservedSlugs.ts"
   }
 }

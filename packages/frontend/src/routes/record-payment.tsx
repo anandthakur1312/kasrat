@@ -19,6 +19,11 @@ function todayISO(): string {
   return `${y}-${m}-${day}`;
 }
 
+function includeCurrentPlan(planList: Plan[], currentPlan: Plan | null): Plan[] {
+  if (!currentPlan || planList.some((p) => p.id === currentPlan.id)) return planList;
+  return [currentPlan, ...planList];
+}
+
 export default function RecordPaymentRoute() {
   const { id } = useParams<{ id: string }>();
   const { t, i18n } = useTranslation();
@@ -49,13 +54,15 @@ export default function RecordPaymentRoute() {
       api.getGym(),
     ]).then(([detailData, planList, gymData]) => {
       if (cancelled) return;
+      const paymentPlans = includeCurrentPlan(planList, detailData.plan);
       setDetail(detailData);
-      setPlans(planList);
+      setPlans(paymentPlans);
       setGym(gymData);
-      // Default plan: previous plan if any, else first
-      const defaultPlan = detailData.plan?.id ?? planList[0]?.id ?? null;
+      // Default plan: previous plan if any, else first active plan. Archived
+      // current plans are included above so first payments do not default to 0.
+      const defaultPlan = detailData.plan?.id ?? paymentPlans[0]?.id ?? null;
       setPlanId(defaultPlan);
-      const defaultPrice = planList.find((p) => p.id === defaultPlan)?.price ?? 0;
+      const defaultPrice = paymentPlans.find((p) => p.id === defaultPlan)?.price ?? 0;
       setAmount(String(defaultPrice));
       setLoading(false);
     });

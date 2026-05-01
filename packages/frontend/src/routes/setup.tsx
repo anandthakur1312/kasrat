@@ -2,7 +2,9 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { slugifySlugInput, validateSlug, type SlugValidationCode } from '@gym-app/shared/reservedSlugs';
 import { api } from '@/lib/api';
+import { ApiError } from '@/lib/realApi';
 import { formatCurrency } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { TimingsEditor } from '@/components/timings-editor';
@@ -20,13 +22,22 @@ const DEFAULT_PLANS: PlanDraft[] = [
   { durationMonths: 12, price: 9000, selected: true },
 ];
 
-function slugify(s: string): string {
-  return s
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-');
+function slugErrorKey(code: SlugValidationCode | 'SLUG_UNAVAILABLE'): string {
+  return code === 'SLUG_RESERVED'
+    ? 'common.slugErrors.reserved'
+    : code === 'SLUG_UNAVAILABLE'
+      ? 'common.slugErrors.unavailable'
+      : 'common.slugErrors.format';
+}
+
+function apiSlugErrorCode(err: unknown): SlugValidationCode | 'SLUG_UNAVAILABLE' | null {
+  if (err instanceof ApiError && err.code?.startsWith('SLUG_')) {
+    return err.code as SlugValidationCode | 'SLUG_UNAVAILABLE';
+  }
+  if (err instanceof Error && err.message.startsWith('SLUG_')) {
+    return err.message as SlugValidationCode | 'SLUG_UNAVAILABLE';
+  }
+  return null;
 }
 
 export default function SetupRoute() {
@@ -43,11 +54,14 @@ export default function SetupRoute() {
   const [plans, setPlans] = useState<PlanDraft[]>(DEFAULT_PLANS);
   const [submitting, setSubmitting] = useState(false);
 
-  const effectiveSlug = slugTouched ? slug : slugify(name);
+  const effectiveSlug = slugTouched ? slug : slugifySlugInput(name);
+  const slugValidation = validateSlug(effectiveSlug);
+  const slugIsValid = slugValidation.ok;
+  const slugError = slugValidation.ok ? null : t(slugErrorKey(slugValidation.code));
   const selectedCount = plans.filter((p) => p.selected).length;
   const canSubmit = useMemo(
-    () => name.trim() !== '' && effectiveSlug !== '' && selectedCount > 0 && !submitting,
-    [name, effectiveSlug, selectedCount, submitting],
+    () => name.trim() !== '' && slugIsValid && selectedCount > 0 && !submitting,
+    [name, slugIsValid, selectedCount, submitting],
   );
 
   function togglePlan(i: number) {
@@ -64,7 +78,7 @@ export default function SetupRoute() {
     try {
       await api.createGym({
         name: name.trim(),
-        slug: effectiveSlug,
+        slug: slugValidation.ok ? slugValidation.slug : effectiveSlug,
         address,
         timings,
         contactPhone: contactPhone.trim(),
@@ -73,8 +87,9 @@ export default function SetupRoute() {
       });
       toast.success(t('setup.toast.created'));
       navigate('/');
-    } catch {
-      toast.error(t('setup.toast.failed'));
+    } catch (err) {
+      const slugCode = apiSlugErrorCode(err);
+      toast.error(slugCode ? t(slugErrorKey(slugCode)) : t('setup.toast.failed'));
       setSubmitting(false);
     }
   }
@@ -109,11 +124,16 @@ export default function SetupRoute() {
                 value={effectiveSlug}
                 onChange={(e) => {
                   setSlugTouched(true);
-                  setSlug(e.target.value);
+                  setSlug(slugifySlugInput(e.target.value));
                 }}
                 className="flex-1 h-10 bg-background px-3 text-sm focus:outline-none"
               />
             </div>
+            {slugError && (
+              <div className="mt-1.5 rounded-md bg-overdue-bg text-overdue-text text-xs px-3 py-2">
+                {slugError}
+              </div>
+            )}
           </Field>
         </Section>
 

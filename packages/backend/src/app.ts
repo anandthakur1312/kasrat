@@ -1,12 +1,13 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import { z } from 'zod';
-import type { Membership as DbMembership } from '@prisma/client';
+import type { Gym as DbGym, Membership as DbMembership } from '@prisma/client';
 import type {
   MemberDetailResponse,
   MemberListItem,
   MembersListResponse,
   PublicGymResponse,
+  SlugCheckResponse,
 } from '@gym-app/shared/types';
 import { prisma } from './db.js';
 import { addMonths, iso, parseDate, todayLocal } from './lib/dates.js';
@@ -15,6 +16,8 @@ import { computeStatus } from './lib/status.js';
 import { clerkAuth, getAuthenticatedOwner, getOwnerGym } from './lib/auth.js';
 import { planMembershipAction } from './lib/payment-policy.js';
 import { toErrorResponse } from './lib/http-errors.js';
+import { validateSlug } from './lib/slug.js';
+import { corsOrigin } from './lib/cors.js';
 import {
   toGym,
   toMember,
@@ -96,9 +99,43 @@ async function plansWithCount(gymId: string) {
   return result;
 }
 
+function clientError(message: string, statusCode: number, code: string) {
+  return Object.assign(new Error(message), { statusCode, code });
+}
+
+function requireValidGymSlug(value: string): string {
+  const result = validateSlug(value);
+  if (!result.ok) {
+    throw clientError('Invalid public URL slug.', 400, result.code);
+  }
+  return result.slug;
+}
+
+function isSlugUniqueViolation(err: unknown): boolean {
+  if (typeof err !== 'object' || err === null) return false;
+  const error = err as { code?: string; meta?: { target?: unknown } };
+  if (error.code !== 'P2002') return false;
+  const target = error.meta?.target;
+  return Array.isArray(target) ? target.includes('slug') : target === 'slug';
+}
+
+function toSlugUnavailableError() {
+  return clientError('Public URL is already taken.', 409, 'SLUG_UNAVAILABLE');
+}
+
+async function assertSlugAvailable(slug: string, currentGymId?: string) {
+  const existing = await prisma.gym.findUnique({
+    where: { slug },
+    select: { id: true },
+  });
+  if (existing && existing.id !== currentGymId) {
+    throw toSlugUnavailableError();
+  }
+}
+
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({ logger: true });
-  await app.register(cors, { origin: true });
+  await app.register(cors, { origin: corsOrigin });
 
   app.setErrorHandler((err, req, reply) => {
     const response = toErrorResponse(err);
@@ -432,7 +469,19 @@ export async function buildApp(): Promise<FastifyInstance> {
   app.patch('/gym', async (req) => {
     const body = updateGymSchema.parse(req.body);
     const { gym } = await getOwnerGym(req);
-    const updated = await prisma.gym.update({ where: { id: gym.id }, data: body });
+    const data = { ...body };
+    if (data.slug !== undefined) {
+      data.slug = requireValidGymSlug(data.slug);
+      await assertSlugAvailable(data.slug, gym.id);
+    }
+
+    let updated: DbGym;
+    try {
+      updated = await prisma.gym.update({ where: { id: gym.id }, data });
+    } catch (err) {
+      if (isSlugUniqueViolation(err)) throw toSlugUnavailableError();
+      throw err;
+    }
     return toGym(updated);
   });
 
@@ -446,59 +495,79 @@ export async function buildApp(): Promise<FastifyInstance> {
     plans: z.array(z.object({ durationMonths: z.number().int().positive(), price: z.number().int().nonnegative() })),
   });
 
-  // First-time setup: authenticated owner creates (or replaces) their own gym.
+  // First-time setup only. Existing gyms are managed through /gym and /plans;
+  // rerunning setup must not replace plan templates used by live memberships.
   app.post('/gyms', async (req) => {
     const body = createGymSchema.parse(req.body);
+    const slug = requireValidGymSlug(body.slug);
     const owner = await getAuthenticatedOwner(req);
     const existing = await prisma.gym.findFirst({ where: { ownerId: owner.id } });
-    let gymId = existing?.id;
     if (existing) {
-      await prisma.gym.update({
-        where: { id: existing.id },
-        data: {
-          name: body.name,
-          slug: body.slug,
-          address: body.address,
-          timings: body.timings,
-          contactPhone: body.contactPhone,
-          upiId: body.upiId,
-          upiDisplayName: body.upiId,
-        },
-      });
-      await prisma.plan.deleteMany({ where: { gymId: existing.id } });
-    } else {
-      const created = await prisma.gym.create({
-        data: {
-          id: newId('gym'),
-          ownerId: owner.id,
-          name: body.name,
-          slug: body.slug,
-          address: body.address,
-          timings: body.timings,
-          contactPhone: body.contactPhone,
-          upiId: body.upiId,
-          upiDisplayName: body.upiId,
-          gracePeriodDays: 3,
-        },
-      });
-      gymId = created.id;
-    }
-    for (const p of body.plans) {
-      await prisma.plan.create({
-        data: {
-          id: newId('plan'),
-          gymId: gymId!,
-          durationMonths: p.durationMonths,
-          price: p.price,
-          name: `${p.durationMonths} Month${p.durationMonths === 1 ? '' : 's'}`,
-          isActive: true,
-        },
+      throw Object.assign(new Error('Gym already configured. Use Settings and Plans to update it.'), {
+        statusCode: 409,
+        code: 'GYM_ALREADY_CONFIGURED',
       });
     }
-    return toGym((await prisma.gym.findUnique({ where: { id: gymId! } }))!);
+    await assertSlugAvailable(slug);
+
+    let created: DbGym;
+    try {
+      created = await prisma.$transaction(async (tx) => {
+        const gym = await tx.gym.create({
+          data: {
+            id: newId('gym'),
+            ownerId: owner.id,
+            name: body.name,
+            slug,
+            address: body.address,
+            timings: body.timings,
+            contactPhone: body.contactPhone,
+            upiId: body.upiId,
+            upiDisplayName: body.upiId,
+            gracePeriodDays: 3,
+          },
+        });
+
+        for (const p of body.plans) {
+          await tx.plan.create({
+            data: {
+              id: newId('plan'),
+              gymId: gym.id,
+              durationMonths: p.durationMonths,
+              price: p.price,
+              name: `${p.durationMonths} Month${p.durationMonths === 1 ? '' : 's'}`,
+              isActive: true,
+            },
+          });
+        }
+
+        return gym;
+      });
+    } catch (err) {
+      if (isSlugUniqueViolation(err)) throw toSlugUnavailableError();
+      throw err;
+    }
+
+    return toGym(created);
   });
 
   // ---- public gym page (no auth) ----
+  app.get('/public/slugs/check', async (req): Promise<SlugCheckResponse> => {
+    const query = z.object({ slug: z.string().optional().default('') }).parse(req.query);
+    const result = validateSlug(query.slug);
+    if (!result.ok) {
+      return { slug: result.slug, available: false, code: result.code };
+    }
+
+    const existing = await prisma.gym.findUnique({
+      where: { slug: result.slug },
+      select: { id: true },
+    });
+    return existing
+      ? { slug: result.slug, available: false, code: 'SLUG_UNAVAILABLE' }
+      : { slug: result.slug, available: true };
+  });
+
   app.get<{ Params: { slug: string } }>('/public/gyms/:slug', async (req): Promise<PublicGymResponse> => {
     const gym = await prisma.gym.findUnique({ where: { slug: req.params.slug } });
     if (!gym) throw Object.assign(new Error('Gym not found'), { statusCode: 404 });
