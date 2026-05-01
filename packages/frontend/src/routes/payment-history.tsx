@@ -1,15 +1,14 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft } from 'lucide-react';
 import type { MemberDetailResponse, PaymentMethod } from '@gym-app/shared/types';
 import { api } from '@/lib/api';
+import { OwnerPageHeader } from '@/components/owner-page-header';
 import { formatCurrency, formatDate } from '@/lib/format';
 
 export default function PaymentHistoryRoute() {
   const { id } = useParams<{ id: string }>();
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [data, setData] = useState<MemberDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -28,17 +27,7 @@ export default function PaymentHistoryRoute() {
 
   return (
     <div className="min-h-screen bg-background pb-12">
-      <header className="flex items-center gap-1 border-b border-border/60 px-2 py-2">
-        <button
-          type="button"
-          aria-label={t('common.back')}
-          onClick={() => navigate(-1)}
-          className="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-secondary"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-        <h1 className="text-[15px] font-medium">{t('detail.history.title')}</h1>
-      </header>
+      <OwnerPageHeader title={t('detail.history.title')} />
 
       {loading || !data ? (
         <div className="px-4 py-8 text-sm text-muted-foreground">{t('common.loading')}</div>

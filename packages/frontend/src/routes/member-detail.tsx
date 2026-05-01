@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 import type { MemberDetailResponse, PaymentMethod } from '@gym-app/shared/types';
 import { api } from '@/lib/api';
 import { Avatar } from '@/components/avatar';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { OwnerPageHeader } from '@/components/owner-page-header';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
@@ -50,30 +51,24 @@ export default function MemberDetailRoute() {
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      <header className="flex items-center justify-between border-b border-border/60 px-2 py-2">
-        <button
-          type="button"
-          aria-label={t('common.back')}
-          onClick={() => navigate(-1)}
-          className="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-secondary"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-        <h1 className="text-[15px] font-medium">{t('detail.title')}</h1>
-        <DetailMenu
-          open={menuOpen}
-          onToggle={() => setMenuOpen((v) => !v)}
-          onClose={() => setMenuOpen(false)}
-          onEdit={() => {
-            setMenuOpen(false);
-            navigate(`/members/${id}/edit`);
-          }}
-          onRemove={() => {
-            setMenuOpen(false);
-            setConfirmRemove(true);
-          }}
-        />
-      </header>
+      <OwnerPageHeader
+        title={t('detail.title')}
+        actions={(
+          <DetailMenu
+            open={menuOpen}
+            onToggle={() => setMenuOpen((v) => !v)}
+            onClose={() => setMenuOpen(false)}
+            onEdit={() => {
+              setMenuOpen(false);
+              navigate(`/members/${id}/edit`);
+            }}
+            onRemove={() => {
+              setMenuOpen(false);
+              setConfirmRemove(true);
+            }}
+          />
+        )}
+      />
 
       {loading || !data ? (
         <div className="px-4 py-8 text-sm text-muted-foreground">{t('common.loading')}</div>

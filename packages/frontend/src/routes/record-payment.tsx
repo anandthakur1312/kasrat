@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { toast } from 'sonner';
 import type { Gym, MemberDetailResponse, MemberStatus, PaymentMethod, Plan } from '@gym-app/shared/types';
 import { api } from '@/lib/api';
 import { Avatar } from '@/components/avatar';
+import { OwnerPageHeader } from '@/components/owner-page-header';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { addMonths, iso, parseDate } from '@/lib/dates';
 import { cn } from '@/lib/utils';
@@ -145,25 +145,15 @@ export default function RecordPaymentRoute() {
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      <header className="flex items-center gap-1 border-b border-border/60 px-2 py-2">
-        <button
-          type="button"
-          aria-label={t('common.back')}
-          onClick={() => navigate(-1)}
-          className="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-secondary"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-        <h1 className="text-[15px] font-medium">
-          {t(
-            isScheduledPayment
-              ? 'pay.titleScheduled'
-              : isAdvanceRenewal
-                ? 'pay.titleAdvance'
-                : 'pay.title',
-          )}
-        </h1>
-      </header>
+      <OwnerPageHeader
+        title={t(
+          isScheduledPayment
+            ? 'pay.titleScheduled'
+            : isAdvanceRenewal
+              ? 'pay.titleAdvance'
+              : 'pay.title',
+        )}
+      />
 
       {loading || !member || !gym ? (
         <div className="px-4 py-8 text-sm text-muted-foreground">{t('common.loading')}</div>
