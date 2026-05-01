@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, ExternalLink } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { slugifySlugInput, validateSlug, type SlugValidationCode } from '@gym-app/shared/reservedSlugs';
 import type { Gym } from '@gym-app/shared/types';
 import { api } from '@/lib/api';
 import { ApiError } from '@/lib/realApi';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { OwnerPageHeader } from '@/components/owner-page-header';
 import { TimingsEditor } from '@/components/timings-editor';
 
 function slugErrorKey(code: SlugValidationCode | 'SLUG_UNAVAILABLE'): string {
@@ -30,7 +30,6 @@ function apiSlugErrorCode(err: unknown): SlugValidationCode | 'SLUG_UNAVAILABLE'
 
 export default function SettingsRoute() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
 
   const [gym, setGym] = useState<Gym | null>(null);
   const [loading, setLoading] = useState(true);
@@ -111,17 +110,7 @@ export default function SettingsRoute() {
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      <header className="flex items-center gap-1 border-b border-border/60 px-2 py-2">
-        <button
-          type="button"
-          aria-label={t('common.back')}
-          onClick={() => navigate(-1)}
-          className="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-secondary"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-        <h1 className="text-[15px] font-medium">{t('settings.title')}</h1>
-      </header>
+      <OwnerPageHeader title={t('settings.title')} />
 
       {loading ? (
         <div className="px-4 py-8 text-sm text-muted-foreground">{t('common.loading')}</div>

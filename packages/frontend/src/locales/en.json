@@ -6,6 +6,7 @@
     "currency": "₹",
     "menu": "Menu",
     "back": "Back",
+    "home": "Home",
     "loading": "Loading…",
     "save": "Save",
     "cancel": "Cancel",
@@ -84,7 +85,7 @@
     "title": "Member",
     "joined": "Joined {{date}}",
     "recordPayment": {
-      "paymentPending": "Record first payment",
+      "paymentPending": "Record payment",
       "overdue": "Record renewal payment",
       "expiring": "Renew membership",
       "scheduled": "Record advance payment",
@@ -96,16 +97,16 @@
     },
     "menu": {
       "edit": "Edit",
-      "remove": "Remove"
+      "remove": "Delete"
     },
     "removeConfirm": {
-      "title": "Remove member?",
-      "body": "{{name}} will be archived and removed from the list. Their payment history is kept.",
-      "confirm": "Remove"
+      "title": "Delete member?",
+      "body": "{{name}} will be deleted from the active member list. Their payment history is kept.",
+      "confirm": "Delete"
     },
     "toast": {
-      "removed": "Member removed",
-      "removeFailed": "Could not remove member"
+      "removed": "Member deleted",
+      "removeFailed": "Could not delete member"
     },
     "status": {
       "overdue": "OVERDUE",

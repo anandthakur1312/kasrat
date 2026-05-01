@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
+import { OwnerPageHeader } from '@/components/owner-page-header';
 
 export default function EditMemberRoute() {
   const { id } = useParams<{ id: string }>();
@@ -47,17 +47,7 @@ export default function EditMemberRoute() {
 
   return (
     <form onSubmit={handleSubmit} className="min-h-screen bg-background pb-24 flex flex-col">
-      <header className="flex items-center gap-1 border-b border-border/60 px-2 py-2">
-        <button
-          type="button"
-          aria-label={t('common.back')}
-          onClick={() => navigate(-1)}
-          className="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-secondary"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-        <h1 className="text-[15px] font-medium">{t('edit.title')}</h1>
-      </header>
+      <OwnerPageHeader title={t('edit.title')} />
 
       {loading ? (
         <div className="px-4 py-8 text-sm text-muted-foreground">{t('common.loading')}</div>
