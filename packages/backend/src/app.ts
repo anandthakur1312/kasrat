@@ -315,6 +315,9 @@ export async function buildApp(): Promise<FastifyInstance> {
     const body = recordPaymentSchema.parse(req.body);
     const { owner, gym } = await getOwnerGym(req);
     const today = iso(todayLocal());
+    if (body.paidOn > today) {
+      throw Object.assign(new Error('Payment date cannot be in the future'), { statusCode: 400 });
+    }
     const plan = await prisma.plan.findFirst({ where: { id: body.planId, gymId: gym.id } });
     if (!plan) throw Object.assign(new Error('Plan not found'), { statusCode: 404 });
     const member = await prisma.member.findFirst({

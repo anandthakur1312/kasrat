@@ -300,6 +300,7 @@ export const mockApi = {
     const member = findMember(req.memberId);
     const plan = findPlan(req.planId);
     const today = iso(TODAY);
+    if (req.paidOn > today) throw new Error('Payment date cannot be in the future');
 
     // Find member's existing memberships
     const existing = membershipsForMember(member.id);
