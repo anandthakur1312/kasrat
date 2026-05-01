@@ -13,6 +13,13 @@ import { cn } from '@/lib/utils';
 
 type Filter = 'all' | 'overdue' | 'expiring' | 'scheduled' | 'active';
 
+function gymInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'K';
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
+  return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
+}
+
 export default function MembersListRoute() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -86,19 +93,22 @@ export default function MembersListRoute() {
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      {/* Top bar */}
-      <header className="flex items-start justify-between border-b border-border/60 px-4 pt-4 pb-3">
-        <div>
-          <div className="text-[11px] uppercase tracking-[0.5px] text-muted-foreground font-medium">
-            {gymName}
+      <header className="border-b border-border/60 bg-secondary/35 px-4 pt-4 pb-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground text-base font-semibold">
+              {gymInitials(gymName)}
+            </div>
+            <div className="min-w-0">
+              <h1 className="truncate text-[24px] font-semibold leading-tight">{gymName || t('app.name')}</h1>
+            </div>
           </div>
-          <h1 className="text-[15px] font-medium leading-tight">{t('members.title')}</h1>
+          <HamburgerMenu
+            open={menuOpen}
+            onToggle={() => setMenuOpen((v) => !v)}
+            onClose={() => setMenuOpen(false)}
+          />
         </div>
-        <HamburgerMenu
-          open={menuOpen}
-          onToggle={() => setMenuOpen((v) => !v)}
-          onClose={() => setMenuOpen(false)}
-        />
       </header>
 
       <div className="px-4 pt-3 space-y-3">
