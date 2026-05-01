@@ -446,28 +446,21 @@ export async function buildApp(): Promise<FastifyInstance> {
     plans: z.array(z.object({ durationMonths: z.number().int().positive(), price: z.number().int().nonnegative() })),
   });
 
-  // First-time setup: authenticated owner creates (or replaces) their own gym.
+  // First-time setup only. Existing gyms are managed through /gym and /plans;
+  // rerunning setup must not replace plan templates used by live memberships.
   app.post('/gyms', async (req) => {
     const body = createGymSchema.parse(req.body);
     const owner = await getAuthenticatedOwner(req);
     const existing = await prisma.gym.findFirst({ where: { ownerId: owner.id } });
-    let gymId = existing?.id;
     if (existing) {
-      await prisma.gym.update({
-        where: { id: existing.id },
-        data: {
-          name: body.name,
-          slug: body.slug,
-          address: body.address,
-          timings: body.timings,
-          contactPhone: body.contactPhone,
-          upiId: body.upiId,
-          upiDisplayName: body.upiId,
-        },
+      throw Object.assign(new Error('Gym already configured. Use Settings and Plans to update it.'), {
+        statusCode: 409,
+        code: 'GYM_ALREADY_CONFIGURED',
       });
-      await prisma.plan.deleteMany({ where: { gymId: existing.id } });
-    } else {
-      const created = await prisma.gym.create({
+    }
+
+    const created = await prisma.$transaction(async (tx) => {
+      const gym = await tx.gym.create({
         data: {
           id: newId('gym'),
           ownerId: owner.id,
@@ -481,21 +474,24 @@ export async function buildApp(): Promise<FastifyInstance> {
           gracePeriodDays: 3,
         },
       });
-      gymId = created.id;
-    }
-    for (const p of body.plans) {
-      await prisma.plan.create({
-        data: {
-          id: newId('plan'),
-          gymId: gymId!,
-          durationMonths: p.durationMonths,
-          price: p.price,
-          name: `${p.durationMonths} Month${p.durationMonths === 1 ? '' : 's'}`,
-          isActive: true,
-        },
-      });
-    }
-    return toGym((await prisma.gym.findUnique({ where: { id: gymId! } }))!);
+
+      for (const p of body.plans) {
+        await tx.plan.create({
+          data: {
+            id: newId('plan'),
+            gymId: gym.id,
+            durationMonths: p.durationMonths,
+            price: p.price,
+            name: `${p.durationMonths} Month${p.durationMonths === 1 ? '' : 's'}`,
+            isActive: true,
+          },
+        });
+      }
+
+      return gym;
+    });
+
+    return toGym(created);
   });
 
   // ---- public gym page (no auth) ----
