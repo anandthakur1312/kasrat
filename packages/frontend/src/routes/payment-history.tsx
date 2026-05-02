@@ -47,6 +47,7 @@ export default function PaymentHistoryRoute() {
                   paidOn={p.paidOn}
                   method={p.method}
                   recordedByName={p.recordedByName}
+                  referenceNote={p.referenceNote}
                   amount={p.amount}
                 />
               ))}
@@ -63,12 +64,14 @@ function PaymentRow({
   paidOn,
   method,
   recordedByName,
+  referenceNote,
   amount,
 }: {
   planName: string;
   paidOn: string;
   method: PaymentMethod;
   recordedByName: string;
+  referenceNote: string;
   amount: number;
 }) {
   const { t, i18n } = useTranslation();
@@ -81,6 +84,11 @@ function PaymentRow({
           {formatDate(paidOn, language)} · {t(`payment.method.${method}`)} ·{' '}
           {t('detail.history.recordedBy', { name: recordedByName })}
         </div>
+        {referenceNote && (
+          <div className="text-xs text-muted-foreground truncate">
+            {referenceNote}
+          </div>
+        )}
       </div>
       <div className="text-sm font-medium whitespace-nowrap">
         {t('common.currency')}

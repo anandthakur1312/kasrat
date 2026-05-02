@@ -93,7 +93,9 @@
     },
     "queued": {
       "title": "अगला प्लान कतार में",
-      "range": "{{plan}} · {{start}} – {{end}}"
+      "range": "{{plan}} · {{start}} – {{end}}",
+      "paid": "भुगतान हो गया",
+      "paymentPending": "लंबित"
     },
     "menu": {
       "edit": "संपादित करें",
@@ -118,7 +120,8 @@
       "days_other": "{{count}} दिन",
       "startsOn": "{{date}} से शुरू",
       "expiredOn": "{{date}} को समाप्त",
-      "endsOn": "{{date}} को समाप्त"
+      "endsOn": "{{date}} को समाप्त",
+      "paidThrough": "{{date}} तक भुगतान"
     },
     "history": {
       "title": "भुगतान इतिहास",
@@ -261,6 +264,17 @@
     "amount": "राशि",
     "date": "भुगतान तारीख़",
     "method": "तरीक़ा",
+    "adjustment": {
+      "discountLabel": "छूट लागू",
+      "customLabel": "कस्टम राशि",
+      "summary": "{{currency}}{{expected}} की जगह {{currency}}{{actual}}",
+      "discountHelper": "कारण याद रखने के लिए नोट फ़ील्ड इस्तेमाल करें।",
+      "customHelper": "अतिरिक्त राशि समझाने के लिए नोट फ़ील्ड इस्तेमाल करें।"
+    },
+    "reference": {
+      "label": "रेफ़रेंस / नोट",
+      "placeholder": "UPI ID, रसीद, या नोट"
+    },
     "advanceRenewal": {
       "heading": "अग्रिम नवीनीकरण",
       "explainer": "यह भुगतान मौजूदा सदस्यता समाप्त होने के बाद की अगली सदस्यता बनाएगा।",

@@ -154,6 +154,7 @@ export interface RecordPaymentRequest {
   amount: number;
   method: PaymentMethod;
   paidOn: string;
+  referenceNote?: string;
 }
 
 export interface UpdateGymRequest {

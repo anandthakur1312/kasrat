@@ -309,6 +309,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     amount: z.number().int().nonnegative(),
     method: z.enum(['cash', 'upi', 'other']),
     paidOn: z.string(),
+    referenceNote: z.string().trim().max(240).optional(),
   });
 
   app.post('/payments', async (req) => {
@@ -394,7 +395,7 @@ export async function buildApp(): Promise<FastifyInstance> {
         amount: body.amount,
         method: body.method,
         paidOn: body.paidOn,
-        referenceNote: body.method === 'upi' ? `GYM-MEM-${member.id}` : '',
+        referenceNote: body.referenceNote || (body.method === 'upi' ? `GYM-MEM-${member.id}` : ''),
         recordedBy: owner.id,
         recordedByName: owner.name,
       },

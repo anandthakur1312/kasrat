@@ -24,6 +24,15 @@ function includeCurrentPlan(planList: Plan[], currentPlan: Plan | null): Plan[] 
   return [currentPlan, ...planList];
 }
 
+function adjustmentKind(amount: number, planPrice: number): 'discount' | 'customAmount' {
+  return amount < planPrice ? 'discount' : 'customAmount';
+}
+
+function adjustmentReference(kind: 'discount' | 'customAmount', planPrice: number, paidAmount: number): string {
+  const label = kind === 'discount' ? 'Discount' : 'Custom amount';
+  return `${label}: plan ₹${planPrice}, paid ₹${paidAmount}`;
+}
+
 export default function RecordPaymentRoute() {
   const { id } = useParams<{ id: string }>();
   const { t, i18n } = useTranslation();
@@ -43,6 +52,7 @@ export default function RecordPaymentRoute() {
   const [amount, setAmount] = useState<string>('');
   const [paidOn, setPaidOn] = useState<string>(todayISO());
   const [method, setMethod] = useState<PaymentMethod>('upi');
+  const [referenceNote, setReferenceNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -78,6 +88,10 @@ export default function RecordPaymentRoute() {
     if (plan) setAmount(String(plan.price));
   }
 
+  function handleAmountChange(value: string) {
+    setAmount(value);
+  }
+
   const refNote = member ? `GYM-MEM-${member.id}` : '';
   const isAdvanceRenewal = status === 'active';
   const isScheduledPayment = status === 'scheduled';
@@ -99,6 +113,15 @@ export default function RecordPaymentRoute() {
   const changePlans = selectedPlan ? plans.filter((p) => p.id !== selectedPlan.id) : plans;
   const latestAllowedPaidOn = todayISO();
   const isFuturePaidOn = paidOn > latestAllowedPaidOn;
+  const numericAmount = Number(amount);
+  const hasValidAmount = amount.trim() !== '' && !Number.isNaN(numericAmount);
+  const hasAmountAdjustment = Boolean(
+    selectedPlan && hasValidAmount && numericAmount !== selectedPlan.price,
+  );
+  const amountAdjustmentKind =
+    hasAmountAdjustment && selectedPlan
+      ? adjustmentKind(numericAmount, selectedPlan.price)
+      : null;
   const renewalPreview = useMemo(() => {
     if (!isAdvanceRenewal || !latestNonCancelledEnd || !selectedPlan) return null;
     const start = parseDate(latestNonCancelledEnd);
@@ -124,8 +147,13 @@ export default function RecordPaymentRoute() {
       toast.error(t('pay.toast.futureDate'));
       return;
     }
-    const numericAmount = Number(amount);
     if (Number.isNaN(numericAmount) || numericAmount < 0) return;
+    const savedReferenceNote = [
+      hasAmountAdjustment && selectedPlan
+        ? adjustmentReference(amountAdjustmentKind ?? 'discount', selectedPlan.price, numericAmount)
+        : '',
+      referenceNote.trim(),
+    ].filter(Boolean).join(' · ');
     setSubmitting(true);
     try {
       await api.recordPayment({
@@ -134,6 +162,7 @@ export default function RecordPaymentRoute() {
         amount: numericAmount,
         method,
         paidOn,
+        referenceNote: savedReferenceNote,
       });
       toast.success(t('pay.toast.recorded'));
       navigate(`/members/${member.id}`);
@@ -254,7 +283,7 @@ export default function RecordPaymentRoute() {
                   type="number"
                   inputMode="numeric"
                   value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                  onChange={(e) => handleAmountChange(e.target.value)}
                   className="w-full h-10 rounded-md border border-border bg-background pl-7 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
                 />
               </div>
@@ -271,6 +300,30 @@ export default function RecordPaymentRoute() {
               />
             </div>
           </section>
+
+          {hasAmountAdjustment && selectedPlan && (
+            <section className="rounded-md border border-expiring-bg bg-expiring-bg/60 px-3 py-3 space-y-2">
+              <div>
+                <Label>
+                  {t(amountAdjustmentKind === 'discount'
+                    ? 'pay.adjustment.discountLabel'
+                    : 'pay.adjustment.customLabel')}
+                </Label>
+                <div className="text-sm text-expiring-text">
+                  {t('pay.adjustment.summary', {
+                    currency: t('common.currency'),
+                    actual: formatCurrency(numericAmount, language),
+                    expected: formatCurrency(selectedPlan.price, language),
+                  })}
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {t(amountAdjustmentKind === 'discount'
+                    ? 'pay.adjustment.discountHelper'
+                    : 'pay.adjustment.customHelper')}
+                </div>
+              </div>
+            </section>
+          )}
 
           {/* Method picker */}
           <section>
@@ -292,6 +345,18 @@ export default function RecordPaymentRoute() {
                 onClick={() => setMethod('other')}
               />
             </div>
+          </section>
+
+          <section>
+            <Label>{t('pay.reference.label')}</Label>
+            <input
+              type="text"
+              value={referenceNote}
+              onChange={(e) => setReferenceNote(e.target.value)}
+              maxLength={140}
+              placeholder={t('pay.reference.placeholder')}
+              className="w-full h-10 rounded-md border border-border bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/40"
+            />
           </section>
 
           {method === 'upi' && (

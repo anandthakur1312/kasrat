@@ -378,7 +378,7 @@ export const mockApi = {
       amount: req.amount,
       method: req.method,
       paidOn: req.paidOn,
-      referenceNote: req.method === 'upi' ? `GYM-MEM-${member.id}` : '',
+      referenceNote: req.referenceNote?.trim() || (req.method === 'upi' ? `GYM-MEM-${member.id}` : ''),
       recordedBy: mockState.owner.id,
       recordedByName: mockState.owner.name,
       createdAt: new Date().toISOString(),
