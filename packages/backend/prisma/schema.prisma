@@ -54,15 +54,16 @@ model Plan {
 }
 
 model Member {
-  id          String       @id
-  gymId       String
-  name        String
-  phone       String
-  joinDate    String
-  isActive    Boolean      @default(true)
-  createdAt   DateTime     @default(now())
-  gym         Gym          @relation(fields: [gymId], references: [id])
-  memberships Membership[]
+  id               String       @id
+  gymId            String
+  name             String
+  phone            String
+  joinDate         String
+  preferredSession String       @default("flexible")
+  isActive         Boolean      @default(true)
+  createdAt        DateTime     @default(now())
+  gym              Gym          @relation(fields: [gymId], references: [id])
+  memberships      Membership[]
 }
 
 model Membership {
@@ -87,6 +88,7 @@ model Payment {
   amount          Int
   method          String
   paidOn          String
+  adjustmentType  String?
   referenceNote   String     @default("")
   recordedBy      String
   recordedByName  String

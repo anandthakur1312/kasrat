@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useClerk } from '@clerk/react';
-import { Menu } from 'lucide-react';
-import type { MemberListItem, MembersListResponse } from '@gym-app/shared/types';
+import { Clock3, Menu, Sunrise, Sunset } from 'lucide-react';
+import type { MemberListItem, MembersListResponse, MemberSession } from '@gym-app/shared/types';
 import { api } from '@/lib/api';
 import { ApiError } from '@/lib/realApi';
 import { Avatar } from '@/components/avatar';
@@ -11,7 +11,8 @@ import { LanguageToggle } from '@/components/language-toggle';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
-type Filter = 'all' | 'overdue' | 'expiring' | 'scheduled' | 'active';
+type StatusFilter = 'all' | 'overdue' | 'expiring' | 'scheduled' | 'active';
+type SessionFilter = MemberSession | null;
 
 function gymInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -27,7 +28,8 @@ export default function MembersListRoute() {
   const [data, setData] = useState<MembersListResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [filter, setFilter] = useState<Filter>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [sessionFilter, setSessionFilter] = useState<SessionFilter>(null);
   const [query, setQuery] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -56,17 +58,35 @@ export default function MembersListRoute() {
     void load();
   }, [load]);
 
-  const filtered = useMemo(() => {
+  const sessionScopedItems = useMemo(() => {
     if (!data) return [];
+    if (sessionFilter === null) return data.members;
+    return data.members.filter((item) => item.member.preferredSession === sessionFilter);
+  }, [data, sessionFilter]);
+
+  const statusCounts = useMemo(() => {
+    if (!data) return null;
+    return {
+      all: sessionScopedItems.length,
+      overdue: sessionScopedItems.filter(
+        (i) => i.status === 'overdue' || i.status === 'payment_pending',
+      ).length,
+      expiring: sessionScopedItems.filter((i) => i.status === 'expiring').length,
+      scheduled: sessionScopedItems.filter((i) => i.status === 'scheduled').length,
+      active: sessionScopedItems.filter((i) => i.status === 'active').length,
+    };
+  }, [data, sessionScopedItems]);
+
+  const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return data.members.filter((item) => {
-      if (filter === 'overdue') {
+    return sessionScopedItems.filter((item) => {
+      if (statusFilter === 'overdue') {
         if (item.status !== 'overdue' && item.status !== 'payment_pending') return false;
-      } else if (filter === 'expiring') {
+      } else if (statusFilter === 'expiring') {
         if (item.status !== 'expiring') return false;
-      } else if (filter === 'scheduled') {
+      } else if (statusFilter === 'scheduled') {
         if (item.status !== 'scheduled') return false;
-      } else if (filter === 'active') {
+      } else if (statusFilter === 'active') {
         if (item.status !== 'active') return false;
       }
       if (q) {
@@ -75,7 +95,7 @@ export default function MembersListRoute() {
       }
       return true;
     });
-  }, [data, filter, query]);
+  }, [sessionScopedItems, statusFilter, query]);
 
   const grouped = useMemo(() => {
     const overdue: MemberListItem[] = [];
@@ -121,37 +141,57 @@ export default function MembersListRoute() {
           className="w-full h-10 rounded-md border border-border bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/40"
         />
 
-        {/* Filter chips */}
+        <div className="grid grid-cols-3 gap-2">
+          <SessionCard
+            session="morning"
+            count={data?.sessionCounts.morning}
+            active={sessionFilter === 'morning'}
+            onClick={() => setSessionFilter((current) => current === 'morning' ? null : 'morning')}
+          />
+          <SessionCard
+            session="evening"
+            count={data?.sessionCounts.evening}
+            active={sessionFilter === 'evening'}
+            onClick={() => setSessionFilter((current) => current === 'evening' ? null : 'evening')}
+          />
+          <SessionCard
+            session="flexible"
+            count={data?.sessionCounts.flexible}
+            active={sessionFilter === 'flexible'}
+            onClick={() => setSessionFilter((current) => current === 'flexible' ? null : 'flexible')}
+          />
+        </div>
+
         <div className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-1">
           <FilterChip
             label={t('members.filter.all')}
-            count={data?.counts.all}
-            active={filter === 'all'}
-            onClick={() => setFilter('all')}
+            count={statusCounts?.all}
+            active={statusFilter === 'all'}
+            onClick={() => setStatusFilter('all')}
           />
           <FilterChip
             label={t('members.filter.overdue')}
-            count={data?.counts.overdue}
-            active={filter === 'overdue'}
-            onClick={() => setFilter('overdue')}
+            count={statusCounts?.overdue}
+            active={statusFilter === 'overdue'}
+            onClick={() => setStatusFilter('overdue')}
           />
           <FilterChip
             label={t('members.filter.expiring')}
-            count={data?.counts.expiring}
-            active={filter === 'expiring'}
-            onClick={() => setFilter('expiring')}
+            count={statusCounts?.expiring}
+            active={statusFilter === 'expiring'}
+            onClick={() => setStatusFilter('expiring')}
           />
           <FilterChip
             label={t('members.filter.scheduled')}
-            count={data?.counts.scheduled}
-            active={filter === 'scheduled'}
-            onClick={() => setFilter('scheduled')}
+            count={statusCounts?.scheduled}
+            active={statusFilter === 'scheduled'}
+            onClick={() => setStatusFilter('scheduled')}
           />
           <FilterChip
             label={t('members.filter.active')}
-            count={data?.counts.active}
-            active={filter === 'active'}
-            onClick={() => setFilter('active')}
+            count={statusCounts?.active}
+            active={statusFilter === 'active'}
+            onClick={() => setStatusFilter('active')}
           />
         </div>
       </div>
@@ -213,6 +253,41 @@ export default function MembersListRoute() {
         </button>
       </div>
     </div>
+  );
+}
+
+function SessionCard({
+  session,
+  count,
+  active,
+  onClick,
+}: {
+  session: MemberSession;
+  count?: number;
+  active: boolean;
+  onClick: () => void;
+}) {
+  const { t } = useTranslation();
+  const Icon = session === 'morning' ? Sunrise : session === 'evening' ? Sunset : Clock3;
+
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={cn(
+        'min-w-0 rounded-md border px-3 py-3 text-left transition-colors',
+        active
+          ? 'border-primary bg-info-bg text-info-text'
+          : 'border-border bg-background text-foreground hover:bg-secondary',
+      )}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-info-text' : 'text-muted-foreground')} />
+        <span className="text-lg font-semibold leading-none">{count ?? '—'}</span>
+      </div>
+      <div className="mt-2 truncate text-xs font-medium">{t(`session.${session}`)}</div>
+    </button>
   );
 }
 
@@ -286,6 +361,7 @@ function Section({
 function MemberRow({ item }: { item: MemberListItem }) {
   const { t, i18n } = useTranslation();
   const language = i18n.resolvedLanguage ?? i18n.language;
+  const sessionLabel = t(`session.${item.member.preferredSession}`);
 
   let statusText = '';
   if (item.status === 'overdue' && item.daysOverdue !== null) {
@@ -302,6 +378,7 @@ function MemberRow({ item }: { item: MemberListItem }) {
   ) {
     statusText = t('members.status.daysLeft', { count: item.daysRemaining });
   }
+  const meta = [item.plan?.name, statusText, sessionLabel].filter(Boolean).join(' · ');
 
   return (
     <li>
@@ -312,9 +389,7 @@ function MemberRow({ item }: { item: MemberListItem }) {
         <Avatar name={item.member.name} status={item.status} />
         <div className="flex-1 min-w-0">
           <div className="text-sm font-medium leading-tight truncate">{item.member.name}</div>
-          <div className="text-xs text-muted-foreground truncate">
-            {item.plan?.name ?? '—'} · {statusText}
-          </div>
+          <div className="text-xs text-muted-foreground truncate">{meta || '—'}</div>
         </div>
         {item.amountDue !== null && item.status === 'overdue' && (
           <div className="text-sm font-medium text-overdue-text whitespace-nowrap">

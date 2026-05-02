@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { MoreHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
-import type { MemberDetailResponse, PaymentMethod } from '@gym-app/shared/types';
+import type { MemberDetailResponse, PaymentAdjustmentType, PaymentMethod } from '@gym-app/shared/types';
 import { api } from '@/lib/api';
 import { Avatar } from '@/components/avatar';
 import { ConfirmDialog } from '@/components/confirm-dialog';
@@ -161,6 +161,15 @@ function DetailBody({
 
   const recentPayments = paymentHistory.slice(0, 5);
   const showViewAll = paymentHistory.length > 5;
+  const paidMembershipEnds: string[] = [];
+  if (currentMembership && currentMembership.amountPaid > 0) paidMembershipEnds.push(currentMembership.endDate);
+  for (const m of data.queuedMemberships) {
+    if (m.amountPaid > 0) paidMembershipEnds.push(m.endDate);
+  }
+  const paidThroughDate =
+    paidMembershipEnds.length > 0
+      ? paidMembershipEnds.reduce((max, date) => (date > max ? date : max), paidMembershipEnds[0]!)
+      : null;
 
   return (
     <div className="px-4 py-4 space-y-5">
@@ -172,6 +181,9 @@ function DetailBody({
           <div className="text-sm text-muted-foreground">{member.phone}</div>
           <div className="text-xs text-muted-foreground mt-0.5">
             {t('detail.joined', { date: formatDate(member.joinDate, language) })}
+          </div>
+          <div className="text-xs text-muted-foreground mt-0.5">
+            {t('detail.session', { session: t(`session.${member.preferredSession}`) })}
           </div>
         </div>
       </section>
@@ -185,6 +197,7 @@ function DetailBody({
         planName={plan?.name ?? null}
         startDate={currentMembership?.startDate ?? null}
         endDate={currentMembership?.endDate ?? null}
+        paidThroughDate={paidThroughDate}
       />
 
       {/* Queued memberships (issue #5): show what's already paid for after
@@ -196,12 +209,21 @@ function DetailBody({
           </h2>
           <ul className="rounded-lg border border-border overflow-hidden divide-y divide-border/60">
             {data.queuedMemberships.map((m) => (
-              <li key={m.id} className="px-3 py-2.5 bg-card text-sm">
-                {t('detail.queued.range', {
-                  plan: m.planName,
-                  start: formatDate(m.startDate, language),
-                  end: formatDate(m.endDate, language),
-                })}
+              <li key={m.id} className="flex items-center justify-between gap-3 px-3 py-2.5 bg-card">
+                <div className="min-w-0">
+                  <div className="text-sm font-medium truncate">{m.planName}</div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {formatDate(m.startDate, language)} – {formatDate(m.endDate, language)}
+                  </div>
+                </div>
+                <div className={cn(
+                  'shrink-0 rounded-full px-2 py-1 text-[11px] font-medium',
+                  m.amountPaid > 0
+                    ? 'bg-info-bg text-info-text'
+                    : 'bg-overdue-bg text-overdue-text',
+                )}>
+                  {m.amountPaid > 0 ? t('detail.queued.paid') : t('detail.queued.paymentPending')}
+                </div>
               </li>
             ))}
           </ul>
@@ -255,6 +277,8 @@ function DetailBody({
                 paidOn={p.paidOn}
                 method={p.method}
                 recordedByName={p.recordedByName}
+                adjustmentType={p.adjustmentType}
+                referenceNote={p.referenceNote}
                 amount={p.amount}
               />
             ))}
@@ -273,6 +297,7 @@ function StatusCard({
   planName,
   startDate,
   endDate,
+  paidThroughDate,
 }: {
   status: MemberDetailResponse['status'];
   daysOverdue: number | null;
@@ -281,6 +306,7 @@ function StatusCard({
   planName: string | null;
   startDate: string | null;
   endDate: string | null;
+  paidThroughDate: string | null;
 }) {
   const { t, i18n } = useTranslation();
   const language = i18n.resolvedLanguage ?? i18n.language;
@@ -301,20 +327,29 @@ function StatusCard({
   if (status === 'overdue') {
     header = t('detail.status.overdue');
     primary = t('detail.status.days', { count: daysOverdue ?? 0 });
-    secondary = endDate ? t('detail.status.expiredOn', { date: formatDate(endDate, language) }) : '';
+    secondary = paidThroughDate
+      ? t('detail.status.paidThrough', { date: formatDate(paidThroughDate, language) })
+      : endDate ? t('detail.status.expiredOn', { date: formatDate(endDate, language) }) : '';
   } else if (status === 'payment_pending') {
     header = t('detail.status.paymentPending');
   } else if (status === 'scheduled') {
     header = t('detail.status.scheduled');
     primary = startDate ? t('detail.status.startsOn', { date: formatDate(startDate, language) }) : '';
+    secondary = paidThroughDate
+      ? t('detail.status.paidThrough', { date: formatDate(paidThroughDate, language) })
+      : '';
   } else if (status === 'expiring') {
     header = t('detail.status.expiring');
     primary = t('detail.status.days', { count: daysRemaining ?? 0 });
-    secondary = endDate ? t('detail.status.endsOn', { date: formatDate(endDate, language) }) : '';
+    secondary = paidThroughDate
+      ? t('detail.status.paidThrough', { date: formatDate(paidThroughDate, language) })
+      : endDate ? t('detail.status.endsOn', { date: formatDate(endDate, language) }) : '';
   } else if (status === 'active') {
     header = t('detail.status.active');
     primary = t('detail.status.days', { count: daysRemaining ?? 0 });
-    secondary = endDate ? t('detail.status.endsOn', { date: formatDate(endDate, language) }) : '';
+    secondary = paidThroughDate
+      ? t('detail.status.paidThrough', { date: formatDate(paidThroughDate, language) })
+      : endDate ? t('detail.status.endsOn', { date: formatDate(endDate, language) }) : '';
   }
 
   return (
@@ -340,12 +375,16 @@ function PaymentRow({
   paidOn,
   method,
   recordedByName,
+  adjustmentType,
+  referenceNote,
   amount,
 }: {
   planName: string;
   paidOn: string;
   method: PaymentMethod;
   recordedByName: string;
+  adjustmentType: PaymentAdjustmentType | null;
+  referenceNote: string;
   amount: number;
 }) {
   const { t, i18n } = useTranslation();
@@ -358,6 +397,13 @@ function PaymentRow({
           {formatDate(paidOn, language)} · {t(`payment.method.${method}`)} ·{' '}
           {t('detail.history.recordedBy', { name: recordedByName })}
         </div>
+        {(adjustmentType || referenceNote) && (
+          <div className="text-xs text-muted-foreground truncate">
+            {adjustmentType && t(`payment.adjustment.${adjustmentType}`)}
+            {adjustmentType && referenceNote && ' · '}
+            {referenceNote}
+          </div>
+        )}
       </div>
       <div className="text-sm font-medium whitespace-nowrap">
         {t('common.currency')}

@@ -33,6 +33,12 @@
       "sundayHours": "Closed"
     }
   },
+  "session": {
+    "label": "Preferred session",
+    "morning": "Morning",
+    "evening": "Evening",
+    "flexible": "Flexible"
+  },
   "members": {
     "title": "Members",
     "search": "Search by name or phone",
@@ -84,6 +90,7 @@
   "detail": {
     "title": "Member",
     "joined": "Joined {{date}}",
+    "session": "{{session}} session",
     "recordPayment": {
       "paymentPending": "Record payment",
       "overdue": "Record renewal payment",
@@ -93,7 +100,9 @@
     },
     "queued": {
       "title": "Next plan queued",
-      "range": "{{plan}} · {{start}} – {{end}}"
+      "range": "{{plan}} · {{start}} – {{end}}",
+      "paid": "Paid",
+      "paymentPending": "Pending"
     },
     "menu": {
       "edit": "Edit",
@@ -118,7 +127,8 @@
       "days_other": "{{count}} days",
       "startsOn": "Starts {{date}}",
       "expiredOn": "Expired {{date}}",
-      "endsOn": "Ends {{date}}"
+      "endsOn": "Ends {{date}}",
+      "paidThrough": "Paid through {{date}}"
     },
     "history": {
       "title": "Payment history",
@@ -132,6 +142,10 @@
       "cash": "Cash",
       "upi": "UPI",
       "other": "Other"
+    },
+    "adjustment": {
+      "discount": "Discount",
+      "custom_amount": "Custom amount"
     }
   },
   "plans": {
@@ -261,6 +275,17 @@
     "amount": "Amount",
     "date": "Payment date",
     "method": "Method",
+    "adjustment": {
+      "discountLabel": "Discount applied",
+      "customLabel": "Custom amount",
+      "summary": "{{currency}}{{actual}} instead of {{currency}}{{expected}}",
+      "discountHelper": "Use the note field if you want to remember why.",
+      "customHelper": "Use the note field to explain the extra amount."
+    },
+    "reference": {
+      "label": "Reference / note",
+      "placeholder": "UPI ID, receipt, or note"
+    },
     "advanceRenewal": {
       "heading": "Advance renewal",
       "explainer": "This payment will create the next membership after the current one ends.",

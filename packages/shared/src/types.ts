@@ -1,8 +1,10 @@
 // Domain entities
 
 export type PaymentMethod = 'cash' | 'upi' | 'other';
+export type PaymentAdjustmentType = 'discount' | 'custom_amount';
 export type MembershipStatus = 'active' | 'expired' | 'cancelled';
 export type MemberStatus = 'overdue' | 'expiring' | 'scheduled' | 'active' | 'payment_pending';
+export type MemberSession = 'morning' | 'evening' | 'flexible';
 
 export interface Owner {
   id: string;
@@ -43,6 +45,7 @@ export interface Member {
   name: string;
   phone: string;
   joinDate: string;
+  preferredSession: MemberSession;
   isActive: boolean;
   createdAt: string;
 }
@@ -66,6 +69,7 @@ export interface Payment {
   amount: number;
   method: PaymentMethod;
   paidOn: string;
+  adjustmentType: PaymentAdjustmentType | null;
   referenceNote: string;
   recordedBy: string; // Owner.id
   recordedByName: string; // hydrated
@@ -92,6 +96,12 @@ export interface MembersListResponse {
     expiring: number;
     scheduled: number;
     active: number;
+  };
+  sessionCounts: {
+    all: number;
+    morning: number;
+    evening: number;
+    flexible: number;
   };
 }
 
@@ -141,11 +151,13 @@ export interface CreateMemberRequest {
   phone: string;
   planId: string;
   startDate: string; // defaults to today on the frontend
+  preferredSession?: MemberSession;
 }
 
 export interface UpdateMemberRequest {
   name?: string;
   phone?: string;
+  preferredSession?: MemberSession;
 }
 
 export interface RecordPaymentRequest {
@@ -154,6 +166,7 @@ export interface RecordPaymentRequest {
   amount: number;
   method: PaymentMethod;
   paidOn: string;
+  referenceNote?: string;
 }
 
 export interface UpdateGymRequest {

@@ -1,3 +1,5 @@
+import { ZodError } from 'zod';
+
 interface ErrorLike {
   message?: string;
   statusCode?: number;
@@ -27,6 +29,17 @@ function isDatabaseUnavailable(err: unknown): boolean {
 }
 
 export function toErrorResponse(err: unknown): ErrorResponse {
+  if (err instanceof ZodError) {
+    return {
+      status: 400,
+      body: {
+        error: 'Invalid request.',
+        code: 'VALIDATION_ERROR',
+      },
+      shouldLog: false,
+    };
+  }
+
   if (isDatabaseUnavailable(err)) {
     return {
       status: 503,

@@ -33,6 +33,12 @@
       "sundayHours": "बंद"
     }
   },
+  "session": {
+    "label": "पसंदीदा समय",
+    "morning": "सुबह",
+    "evening": "शाम",
+    "flexible": "लचीला"
+  },
   "members": {
     "title": "सदस्य",
     "search": "नाम या फ़ोन से खोजें",
@@ -84,6 +90,7 @@
   "detail": {
     "title": "सदस्य",
     "joined": "{{date}} को जुड़े",
+    "session": "{{session}} समय",
     "recordPayment": {
       "paymentPending": "भुगतान दर्ज करें",
       "overdue": "नवीनीकरण भुगतान दर्ज करें",
@@ -93,7 +100,9 @@
     },
     "queued": {
       "title": "अगला प्लान कतार में",
-      "range": "{{plan}} · {{start}} – {{end}}"
+      "range": "{{plan}} · {{start}} – {{end}}",
+      "paid": "भुगतान हो गया",
+      "paymentPending": "लंबित"
     },
     "menu": {
       "edit": "संपादित करें",
@@ -118,7 +127,8 @@
       "days_other": "{{count}} दिन",
       "startsOn": "{{date}} से शुरू",
       "expiredOn": "{{date}} को समाप्त",
-      "endsOn": "{{date}} को समाप्त"
+      "endsOn": "{{date}} को समाप्त",
+      "paidThrough": "{{date}} तक भुगतान"
     },
     "history": {
       "title": "भुगतान इतिहास",
@@ -132,6 +142,10 @@
       "cash": "नकद",
       "upi": "यूपीआई",
       "other": "अन्य"
+    },
+    "adjustment": {
+      "discount": "छूट",
+      "custom_amount": "कस्टम राशि"
     }
   },
   "plans": {
@@ -261,6 +275,17 @@
     "amount": "राशि",
     "date": "भुगतान तारीख़",
     "method": "तरीक़ा",
+    "adjustment": {
+      "discountLabel": "छूट लागू",
+      "customLabel": "कस्टम राशि",
+      "summary": "{{currency}}{{expected}} की जगह {{currency}}{{actual}}",
+      "discountHelper": "कारण याद रखने के लिए नोट फ़ील्ड इस्तेमाल करें।",
+      "customHelper": "अतिरिक्त राशि समझाने के लिए नोट फ़ील्ड इस्तेमाल करें।"
+    },
+    "reference": {
+      "label": "रेफ़रेंस / नोट",
+      "placeholder": "UPI ID, रसीद, या नोट"
+    },
     "advanceRenewal": {
       "heading": "अग्रिम नवीनीकरण",
       "explainer": "यह भुगतान मौजूदा सदस्यता समाप्त होने के बाद की अगली सदस्यता बनाएगा।",

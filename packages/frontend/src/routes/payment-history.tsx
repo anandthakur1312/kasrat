@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import type { MemberDetailResponse, PaymentMethod } from '@gym-app/shared/types';
+import type { MemberDetailResponse, PaymentAdjustmentType, PaymentMethod } from '@gym-app/shared/types';
 import { api } from '@/lib/api';
 import { OwnerPageHeader } from '@/components/owner-page-header';
 import { formatCurrency, formatDate } from '@/lib/format';
@@ -47,6 +47,8 @@ export default function PaymentHistoryRoute() {
                   paidOn={p.paidOn}
                   method={p.method}
                   recordedByName={p.recordedByName}
+                  adjustmentType={p.adjustmentType}
+                  referenceNote={p.referenceNote}
                   amount={p.amount}
                 />
               ))}
@@ -63,12 +65,16 @@ function PaymentRow({
   paidOn,
   method,
   recordedByName,
+  adjustmentType,
+  referenceNote,
   amount,
 }: {
   planName: string;
   paidOn: string;
   method: PaymentMethod;
   recordedByName: string;
+  adjustmentType: PaymentAdjustmentType | null;
+  referenceNote: string;
   amount: number;
 }) {
   const { t, i18n } = useTranslation();
@@ -81,6 +87,13 @@ function PaymentRow({
           {formatDate(paidOn, language)} · {t(`payment.method.${method}`)} ·{' '}
           {t('detail.history.recordedBy', { name: recordedByName })}
         </div>
+        {(adjustmentType || referenceNote) && (
+          <div className="text-xs text-muted-foreground truncate">
+            {adjustmentType && t(`payment.adjustment.${adjustmentType}`)}
+            {adjustmentType && referenceNote && ' · '}
+            {referenceNote}
+          </div>
+        )}
       </div>
       <div className="text-sm font-medium whitespace-nowrap">
         {t('common.currency')}

@@ -76,6 +76,7 @@ export function toMember(row: {
   name: string;
   phone: string;
   joinDate: string;
+  preferredSession: string;
   isActive: boolean;
   createdAt: DbDate;
 }): Member {
@@ -85,6 +86,7 @@ export function toMember(row: {
     name: row.name,
     phone: row.phone,
     joinDate: row.joinDate,
+    preferredSession: row.preferredSession as Member['preferredSession'],
     isActive: row.isActive,
     createdAt: asISO(row.createdAt),
   };
@@ -123,6 +125,7 @@ export function toPayment(
     amount: number;
     method: string;
     paidOn: string;
+    adjustmentType: string | null;
     referenceNote: string;
     recordedBy: string;
     recordedByName: string;
@@ -135,6 +138,7 @@ export function toPayment(
     amount: row.amount,
     method: row.method as Payment['method'],
     paidOn: row.paidOn,
+    adjustmentType: row.adjustmentType as Payment['adjustmentType'],
     referenceNote: row.referenceNote,
     recordedBy: row.recordedBy,
     recordedByName: row.recordedByName,

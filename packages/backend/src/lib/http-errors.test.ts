@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import { toErrorResponse } from './http-errors.js';
 
 describe('toErrorResponse', () => {
@@ -30,6 +31,17 @@ describe('toErrorResponse', () => {
     expect(response).toEqual({
       status: 404,
       body: { error: 'No gym configured', code: 'NO_GYM' },
+      shouldLog: false,
+    });
+  });
+
+  it('returns validation failures as client errors', () => {
+    const result = z.object({ name: z.string().min(1) }).safeParse({ name: '' });
+    if (result.success) throw new Error('expected schema parse to fail');
+
+    expect(toErrorResponse(result.error)).toEqual({
+      status: 400,
+      body: { error: 'Invalid request.', code: 'VALIDATION_ERROR' },
       shouldLog: false,
     });
   });
