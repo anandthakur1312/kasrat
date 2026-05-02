@@ -44,14 +44,15 @@ export class ApiError extends Error {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const isPublic = PUBLIC_PREFIXES.some((p) => path.startsWith(p));
   const token = !isPublic && getTokenFn ? await getTokenFn() : null;
+  const headers = new Headers(init?.headers);
+  if (typeof init?.body === 'string' && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+  if (token) headers.set('Authorization', `Bearer ${token}`);
 
   const res = await fetch(`${BASE_URL}${path}`, {
     ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(init?.headers ?? {}),
-    },
+    headers,
   });
 
   if (!res.ok) {
