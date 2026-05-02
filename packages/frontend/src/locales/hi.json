@@ -33,6 +33,12 @@
       "sundayHours": "बंद"
     }
   },
+  "session": {
+    "label": "पसंदीदा समय",
+    "morning": "सुबह",
+    "evening": "शाम",
+    "flexible": "लचीला"
+  },
   "members": {
     "title": "सदस्य",
     "search": "नाम या फ़ोन से खोजें",
@@ -84,6 +90,7 @@
   "detail": {
     "title": "सदस्य",
     "joined": "{{date}} को जुड़े",
+    "session": "{{session}} समय",
     "recordPayment": {
       "paymentPending": "भुगतान दर्ज करें",
       "overdue": "नवीनीकरण भुगतान दर्ज करें",
@@ -135,6 +142,10 @@
       "cash": "नकद",
       "upi": "यूपीआई",
       "other": "अन्य"
+    },
+    "adjustment": {
+      "discount": "छूट",
+      "custom_amount": "कस्टम राशि"
     }
   },
   "plans": {

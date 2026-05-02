@@ -28,11 +28,6 @@ function adjustmentKind(amount: number, planPrice: number): 'discount' | 'custom
   return amount < planPrice ? 'discount' : 'customAmount';
 }
 
-function adjustmentReference(kind: 'discount' | 'customAmount', planPrice: number, paidAmount: number): string {
-  const label = kind === 'discount' ? 'Discount' : 'Custom amount';
-  return `${label}: plan ₹${planPrice}, paid ₹${paidAmount}`;
-}
-
 export default function RecordPaymentRoute() {
   const { id } = useParams<{ id: string }>();
   const { t, i18n } = useTranslation();
@@ -114,7 +109,10 @@ export default function RecordPaymentRoute() {
   const latestAllowedPaidOn = todayISO();
   const isFuturePaidOn = paidOn > latestAllowedPaidOn;
   const numericAmount = Number(amount);
-  const hasValidAmount = amount.trim() !== '' && !Number.isNaN(numericAmount);
+  const hasValidAmount =
+    amount.trim() !== '' &&
+    Number.isFinite(numericAmount) &&
+    Number.isInteger(numericAmount);
   const hasAmountAdjustment = Boolean(
     selectedPlan && hasValidAmount && numericAmount !== selectedPlan.price,
   );
@@ -147,13 +145,7 @@ export default function RecordPaymentRoute() {
       toast.error(t('pay.toast.futureDate'));
       return;
     }
-    if (Number.isNaN(numericAmount) || numericAmount < 0) return;
-    const savedReferenceNote = [
-      hasAmountAdjustment && selectedPlan
-        ? adjustmentReference(amountAdjustmentKind ?? 'discount', selectedPlan.price, numericAmount)
-        : '',
-      referenceNote.trim(),
-    ].filter(Boolean).join(' · ');
+    if (!hasValidAmount || numericAmount < 0) return;
     setSubmitting(true);
     try {
       await api.recordPayment({
@@ -162,7 +154,7 @@ export default function RecordPaymentRoute() {
         amount: numericAmount,
         method,
         paidOn,
-        referenceNote: savedReferenceNote,
+        referenceNote: referenceNote.trim(),
       });
       toast.success(t('pay.toast.recorded'));
       navigate(`/members/${member.id}`);
@@ -282,6 +274,8 @@ export default function RecordPaymentRoute() {
                 <input
                   type="number"
                   inputMode="numeric"
+                  min={0}
+                  step={1}
                   value={amount}
                   onChange={(e) => handleAmountChange(e.target.value)}
                   className="w-full h-10 rounded-md border border-border bg-background pl-7 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
@@ -390,7 +384,15 @@ export default function RecordPaymentRoute() {
         <button
           type="button"
           onClick={handleConfirm}
-          disabled={submitting || loading || !planId || !paidOn || isFuturePaidOn}
+          disabled={
+            submitting ||
+            loading ||
+            !planId ||
+            !paidOn ||
+            isFuturePaidOn ||
+            !hasValidAmount ||
+            numericAmount < 0
+          }
           className="w-full h-11 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {method === 'cash' ? t('pay.confirmCash') : t('pay.confirmReceived')}

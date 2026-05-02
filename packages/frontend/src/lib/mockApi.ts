@@ -27,6 +27,12 @@ const EXPIRING_THRESHOLD_DAYS = 7;
 
 const delay = (ms = 100) => new Promise((r) => setTimeout(r, ms));
 
+function paymentAdjustmentType(amount: number, planPrice: number): Payment['adjustmentType'] {
+  if (amount < planPrice) return 'discount';
+  if (amount > planPrice) return 'custom_amount';
+  return null;
+}
+
 // ---------- internal helpers ----------
 
 function daysBetween(from: Date, to: Date): number {
@@ -209,7 +215,13 @@ export const mockApi = {
       scheduled: sorted.filter((i) => i.status === 'scheduled').length,
       active: sorted.filter((i) => i.status === 'active').length,
     };
-    return { members: sorted, counts };
+    const sessionCounts = {
+      all: sorted.length,
+      morning: sorted.filter((i) => i.member.preferredSession === 'morning').length,
+      evening: sorted.filter((i) => i.member.preferredSession === 'evening').length,
+      flexible: sorted.filter((i) => i.member.preferredSession === 'flexible').length,
+    };
+    return { members: sorted, counts, sessionCounts };
   },
 
   async getMemberDetail(id: string): Promise<MemberDetailResponse> {
@@ -251,12 +263,14 @@ export const mockApi = {
   async createMember(req: CreateMemberRequest): Promise<Member> {
     await delay();
     const plan = findPlan(req.planId);
+    if (!plan.isActive) throw new Error(`Plan is archived: ${req.planId}`);
     const member: Member = {
       id: nextId('member'),
       gymId: mockState.gym.id,
       name: req.name,
       phone: req.phone,
       joinDate: req.startDate,
+      preferredSession: req.preferredSession ?? 'flexible',
       isActive: true,
       createdAt: new Date().toISOString(),
     };
@@ -286,6 +300,7 @@ export const mockApi = {
     const member = findMember(id);
     if (req.name !== undefined) member.name = req.name.trim();
     if (req.phone !== undefined) member.phone = req.phone.trim();
+    if (req.preferredSession !== undefined) member.preferredSession = req.preferredSession;
     return { ...member };
   },
 
@@ -378,7 +393,8 @@ export const mockApi = {
       amount: req.amount,
       method: req.method,
       paidOn: req.paidOn,
-      referenceNote: req.referenceNote?.trim() || (req.method === 'upi' ? `GYM-MEM-${member.id}` : ''),
+      adjustmentType: paymentAdjustmentType(req.amount, plan.price),
+      referenceNote: req.referenceNote?.trim() ?? '',
       recordedBy: mockState.owner.id,
       recordedByName: mockState.owner.name,
       createdAt: new Date().toISOString(),

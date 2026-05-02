@@ -112,9 +112,9 @@ async function main() {
   const anjaliId = newId('member');
   await prisma.member.createMany({
     data: [
-      { id: rajeshId, gymId: gym.id, name: 'Rajesh Kumar', phone: '+91 98123 45678', joinDate: iso(rajeshStart1), isActive: true },
-      { id: snehaId,  gymId: gym.id, name: 'Sneha Patel',  phone: '+91 99876 54321', joinDate: iso(snehaStart),    isActive: true },
-      { id: anjaliId, gymId: gym.id, name: 'Anjali Singh', phone: '+91 97000 12345', joinDate: iso(anjaliStart),   isActive: true },
+      { id: rajeshId, gymId: gym.id, name: 'Rajesh Kumar', phone: '+91 98123 45678', joinDate: iso(rajeshStart1), preferredSession: 'morning', isActive: true },
+      { id: snehaId,  gymId: gym.id, name: 'Sneha Patel',  phone: '+91 99876 54321', joinDate: iso(snehaStart),    preferredSession: 'evening', isActive: true },
+      { id: anjaliId, gymId: gym.id, name: 'Anjali Singh', phone: '+91 97000 12345', joinDate: iso(anjaliStart),   preferredSession: 'flexible', isActive: true },
     ],
   });
 

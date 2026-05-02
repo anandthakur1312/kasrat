@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import type { Plan } from '@gym-app/shared/types';
+import type { MemberSession, Plan } from '@gym-app/shared/types';
 import { api } from '@/lib/api';
 import { OwnerPageHeader } from '@/components/owner-page-header';
+import { MemberSessionControl } from '@/components/member-session-control';
 import { formatCurrency } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
@@ -28,6 +29,7 @@ export default function AddMemberRoute() {
   const [phone, setPhone] = useState('');
   const [planId, setPlanId] = useState<string | null>(null);
   const [startDate, setStartDate] = useState(todayISO());
+  const [preferredSession, setPreferredSession] = useState<MemberSession>('flexible');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -57,6 +59,7 @@ export default function AddMemberRoute() {
         phone: phone.trim(),
         planId,
         startDate,
+        preferredSession,
       });
       toast.success(t('new.toast.added', { name: created.name }));
       navigate('/');
@@ -134,6 +137,10 @@ export default function AddMemberRoute() {
               onChange={(e) => setStartDate(e.target.value)}
               className="w-full h-10 rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
             />
+          </Field>
+
+          <Field label={t('session.label')}>
+            <MemberSessionControl value={preferredSession} onChange={setPreferredSession} />
           </Field>
         </div>
       )}

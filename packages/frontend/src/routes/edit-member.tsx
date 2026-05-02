@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import type { MemberSession } from '@gym-app/shared/types';
 import { api } from '@/lib/api';
+import { MemberSessionControl } from '@/components/member-session-control';
 import { OwnerPageHeader } from '@/components/owner-page-header';
 
 export default function EditMemberRoute() {
@@ -12,6 +14,7 @@ export default function EditMemberRoute() {
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [preferredSession, setPreferredSession] = useState<MemberSession>('flexible');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -22,6 +25,7 @@ export default function EditMemberRoute() {
       if (cancelled) return;
       setName(d.member.name);
       setPhone(d.member.phone);
+      setPreferredSession(d.member.preferredSession);
       setLoading(false);
     });
     return () => {
@@ -36,7 +40,11 @@ export default function EditMemberRoute() {
     if (!id || !canSubmit) return;
     setSubmitting(true);
     try {
-      await api.updateMember(id, { name: name.trim(), phone: phone.trim() });
+      await api.updateMember(id, {
+        name: name.trim(),
+        phone: phone.trim(),
+        preferredSession,
+      });
       toast.success(t('edit.toast.saved'));
       navigate(`/members/${id}`);
     } catch {
@@ -72,6 +80,9 @@ export default function EditMemberRoute() {
               required
               className="w-full h-10 rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
             />
+          </Field>
+          <Field label={t('session.label')}>
+            <MemberSessionControl value={preferredSession} onChange={setPreferredSession} />
           </Field>
         </div>
       )}

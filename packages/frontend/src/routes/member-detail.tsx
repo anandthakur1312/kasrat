@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { MoreHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
-import type { MemberDetailResponse, PaymentMethod } from '@gym-app/shared/types';
+import type { MemberDetailResponse, PaymentAdjustmentType, PaymentMethod } from '@gym-app/shared/types';
 import { api } from '@/lib/api';
 import { Avatar } from '@/components/avatar';
 import { ConfirmDialog } from '@/components/confirm-dialog';
@@ -182,6 +182,9 @@ function DetailBody({
           <div className="text-xs text-muted-foreground mt-0.5">
             {t('detail.joined', { date: formatDate(member.joinDate, language) })}
           </div>
+          <div className="text-xs text-muted-foreground mt-0.5">
+            {t('detail.session', { session: t(`session.${member.preferredSession}`) })}
+          </div>
         </div>
       </section>
 
@@ -274,6 +277,7 @@ function DetailBody({
                 paidOn={p.paidOn}
                 method={p.method}
                 recordedByName={p.recordedByName}
+                adjustmentType={p.adjustmentType}
                 referenceNote={p.referenceNote}
                 amount={p.amount}
               />
@@ -371,6 +375,7 @@ function PaymentRow({
   paidOn,
   method,
   recordedByName,
+  adjustmentType,
   referenceNote,
   amount,
 }: {
@@ -378,6 +383,7 @@ function PaymentRow({
   paidOn: string;
   method: PaymentMethod;
   recordedByName: string;
+  adjustmentType: PaymentAdjustmentType | null;
   referenceNote: string;
   amount: number;
 }) {
@@ -391,8 +397,10 @@ function PaymentRow({
           {formatDate(paidOn, language)} · {t(`payment.method.${method}`)} ·{' '}
           {t('detail.history.recordedBy', { name: recordedByName })}
         </div>
-        {referenceNote && (
+        {(adjustmentType || referenceNote) && (
           <div className="text-xs text-muted-foreground truncate">
+            {adjustmentType && t(`payment.adjustment.${adjustmentType}`)}
+            {adjustmentType && referenceNote && ' · '}
             {referenceNote}
           </div>
         )}

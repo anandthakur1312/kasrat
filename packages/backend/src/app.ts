@@ -15,6 +15,7 @@ import { newId } from './lib/ids.js';
 import { computeStatus } from './lib/status.js';
 import { clerkAuth, getAuthenticatedOwner, getOwnerGym } from './lib/auth.js';
 import { planMembershipAction } from './lib/payment-policy.js';
+import { paymentAdjustmentType } from './lib/payment-adjustment.js';
 import { toErrorResponse } from './lib/http-errors.js';
 import { validateSlug } from './lib/slug.js';
 import { corsOrigin } from './lib/cors.js';
@@ -123,6 +124,13 @@ function toSlugUnavailableError() {
   return clientError('Public URL is already taken.', 409, 'SLUG_UNAVAILABLE');
 }
 
+const nonEmptyText = z.string().trim().min(1);
+const isoDateString = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .refine((value) => iso(parseDate(value)) === value);
+const memberSessionSchema = z.enum(['morning', 'evening', 'flexible']);
+
 async function assertSlugAvailable(slug: string, currentGymId?: string) {
   const existing = await prisma.gym.findUnique({
     where: { slug },
@@ -172,6 +180,12 @@ export async function buildApp(): Promise<FastifyInstance> {
         expiring: sorted.filter((i) => i.status === 'expiring').length,
         scheduled: sorted.filter((i) => i.status === 'scheduled').length,
         active: sorted.filter((i) => i.status === 'active').length,
+      },
+      sessionCounts: {
+        all: sorted.length,
+        morning: sorted.filter((i) => i.member.preferredSession === 'morning').length,
+        evening: sorted.filter((i) => i.member.preferredSession === 'evening').length,
+        flexible: sorted.filter((i) => i.member.preferredSession === 'flexible').length,
       },
     };
   });
@@ -229,25 +243,29 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   const createMemberSchema = z.object({
-    name: z.string().min(1),
-    phone: z.string().min(1),
+    name: nonEmptyText,
+    phone: nonEmptyText,
     planId: z.string(),
-    startDate: z.string(),
+    startDate: isoDateString,
+    preferredSession: memberSessionSchema.default('flexible'),
   });
 
   app.post('/members', async (req) => {
     const body = createMemberSchema.parse(req.body);
     const { gym } = await getOwnerGym(req);
-    const plan = await prisma.plan.findFirst({ where: { id: body.planId, gymId: gym.id } });
+    const plan = await prisma.plan.findFirst({
+      where: { id: body.planId, gymId: gym.id, isActive: true },
+    });
     if (!plan) throw Object.assign(new Error('Plan not found'), { statusCode: 404 });
 
     const member = await prisma.member.create({
       data: {
         id: newId('member'),
         gymId: gym.id,
-        name: body.name.trim(),
-        phone: body.phone.trim(),
+        name: body.name,
+        phone: body.phone,
         joinDate: body.startDate,
+        preferredSession: body.preferredSession,
         isActive: true,
       },
     });
@@ -269,8 +287,9 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   const updateMemberSchema = z.object({
-    name: z.string().min(1).optional(),
-    phone: z.string().min(1).optional(),
+    name: nonEmptyText.optional(),
+    phone: nonEmptyText.optional(),
+    preferredSession: memberSessionSchema.optional(),
   });
 
   app.patch<{ Params: { id: string } }>('/members/:id', async (req) => {
@@ -283,8 +302,9 @@ export async function buildApp(): Promise<FastifyInstance> {
     const updated = await prisma.member.update({
       where: { id: existing.id },
       data: {
-        ...(body.name !== undefined ? { name: body.name.trim() } : {}),
-        ...(body.phone !== undefined ? { phone: body.phone.trim() } : {}),
+        ...(body.name !== undefined ? { name: body.name } : {}),
+        ...(body.phone !== undefined ? { phone: body.phone } : {}),
+        ...(body.preferredSession !== undefined ? { preferredSession: body.preferredSession } : {}),
       },
     });
     return toMember(updated);
@@ -308,7 +328,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     planId: z.string(),
     amount: z.number().int().nonnegative(),
     method: z.enum(['cash', 'upi', 'other']),
-    paidOn: z.string(),
+    paidOn: isoDateString,
     referenceNote: z.string().trim().max(240).optional(),
   });
 
@@ -395,7 +415,8 @@ export async function buildApp(): Promise<FastifyInstance> {
         amount: body.amount,
         method: body.method,
         paidOn: body.paidOn,
-        referenceNote: body.referenceNote || (body.method === 'upi' ? `GYM-MEM-${member.id}` : ''),
+        adjustmentType: paymentAdjustmentType(body.amount, plan.price),
+        referenceNote: body.referenceNote ?? '',
         recordedBy: owner.id,
         recordedByName: owner.name,
       },
