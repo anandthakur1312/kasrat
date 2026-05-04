@@ -347,7 +347,7 @@ export default function RecordPaymentRoute() {
               type="text"
               value={referenceNote}
               onChange={(e) => setReferenceNote(e.target.value)}
-              maxLength={140}
+              maxLength={240}
               placeholder={t('pay.reference.placeholder')}
               className="w-full h-10 rounded-md border border-border bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/40"
             />

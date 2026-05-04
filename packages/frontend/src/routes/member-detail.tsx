@@ -161,14 +161,17 @@ function DetailBody({
 
   const recentPayments = paymentHistory.slice(0, 5);
   const showViewAll = paymentHistory.length > 5;
-  const paidMembershipEnds: string[] = [];
-  if (currentMembership && currentMembership.amountPaid > 0) paidMembershipEnds.push(currentMembership.endDate);
-  for (const m of data.queuedMemberships) {
-    if (m.amountPaid > 0) paidMembershipEnds.push(m.endDate);
-  }
+  // Only meaningful when paid renewals extend coverage beyond the current
+  // membership's end. For an overdue/active member with no queued renewals,
+  // "Paid through {endDate}" duplicates "Ends/Expired {endDate}" with weaker
+  // wording — and for overdue it's actively misleading (sounds like still
+  // covered). Fall back to the original status text in that case.
+  const paidQueuedEnds = data.queuedMemberships
+    .filter((m) => m.amountPaid > 0)
+    .map((m) => m.endDate);
   const paidThroughDate =
-    paidMembershipEnds.length > 0
-      ? paidMembershipEnds.reduce((max, date) => (date > max ? date : max), paidMembershipEnds[0]!)
+    paidQueuedEnds.length > 0
+      ? paidQueuedEnds.reduce((max, date) => (date > max ? date : max), paidQueuedEnds[0]!)
       : null;
 
   return (
