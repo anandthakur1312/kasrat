@@ -68,6 +68,7 @@
     "menu": {
       "plans": "Plans",
       "settings": "Settings",
+      "team": "Team",
       "logout": "Logout",
       "language": "Language"
     },
@@ -309,6 +310,68 @@
       "recorded": "Payment recorded ✓",
       "failed": "Could not record payment",
       "futureDate": "Payment date cannot be in the future"
+    }
+  },
+  "noAccess": {
+    "title": "No gym access yet",
+    "body": "Your sign-in worked, but you don't have access to a gym yet. Ask the gym admin to invite you, or contact us to set up a new gym.",
+    "contact": "Contact us:",
+    "signOut": "Sign out and try a different account"
+  },
+  "team": {
+    "title": "Team",
+    "forbidden": "Only gym admins can manage the team.",
+    "error": "Could not load team. Try again.",
+    "role": {
+      "admin": "Admin",
+      "staff": "Staff"
+    },
+    "invite": {
+      "title": "Invite a teammate",
+      "emailPlaceholder": "name@example.com",
+      "create": "Create invite link",
+      "linkHeading": "Share this link with {{email}}",
+      "linkHint": "The link works for 14 days. They must sign in with this email to accept.",
+      "copy": "Copy invite link",
+      "copied": "Invite link copied",
+      "alreadyMember": "That email already has access",
+      "failed": "Could not create the invite"
+    },
+    "pending": {
+      "title": "Pending invites",
+      "revoke": "Revoke"
+    },
+    "members": {
+      "title": "Members with access",
+      "you": "(you)",
+      "disabled": "Disabled",
+      "disable": "Disable access",
+      "disableConfirm": {
+        "title": "Disable access?",
+        "body": "{{name}} will lose access on their next request. You can re-invite them later.",
+        "confirm": "Disable access"
+      }
+    },
+    "errors": {
+      "lastAdmin": "A gym must keep at least one active admin.",
+      "update": "Could not update — please try again."
+    }
+  },
+  "invite": {
+    "checking": "Checking your invite…",
+    "acceptedTitle": "You're in",
+    "acceptedBody": "Welcome to {{name}}. Taking you to the gym now.",
+    "problemTitle": "Couldn't accept invite",
+    "toast": {
+      "success": "Welcome to {{name}}"
+    },
+    "errors": {
+      "missingToken": "This invite link is missing its token.",
+      "emailMismatch": "This invite was sent to a different email. Sign in with the invited email to accept.",
+      "expired": "This invite has expired. Ask the admin to send a new one.",
+      "notPending": "This invite is no longer valid. It may have already been accepted or revoked.",
+      "notFound": "We couldn't find this invite. The link may be wrong.",
+      "generic": "Something went wrong while accepting the invite. Try again."
     }
   }
 }

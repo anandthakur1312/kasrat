@@ -5,6 +5,9 @@ export type PaymentAdjustmentType = 'discount' | 'custom_amount';
 export type MembershipStatus = 'active' | 'expired' | 'cancelled';
 export type MemberStatus = 'overdue' | 'expiring' | 'scheduled' | 'active' | 'payment_pending';
 export type MemberSession = 'morning' | 'evening' | 'flexible';
+export type GymRole = 'admin' | 'staff';
+export type GymUserStatus = 'active' | 'disabled';
+export type GymInviteStatus = 'pending' | 'accepted' | 'revoked' | 'expired';
 
 export interface Owner {
   id: string;
@@ -190,4 +193,62 @@ export interface UpdatePlanRequest {
   price?: number;
   name?: string;
   isActive?: boolean;
+}
+
+// Issue #16: shared gym access
+
+export interface AccessResponse {
+  // null when the signed-in user has no active gym membership.
+  gym: { id: string; name: string; slug: string } | null;
+  role: GymRole | null;
+  isPlatformAdmin: boolean;
+}
+
+export interface TeamMember {
+  ownerId: string;
+  email: string;
+  name: string;
+  role: GymRole;
+  status: GymUserStatus;
+  joinedAt: string; // ISO 8601
+}
+
+export interface PendingInvite {
+  id: string;
+  email: string;
+  role: GymRole;
+  status: GymInviteStatus;
+  expiresAt: string; // ISO 8601
+  createdAt: string; // ISO 8601
+}
+
+export interface TeamResponse {
+  members: TeamMember[];
+  invites: PendingInvite[];
+}
+
+export interface CreateInviteRequest {
+  email: string;
+  role: GymRole;
+}
+
+export interface CreateInviteResponse {
+  invite: PendingInvite;
+  // The raw token is shown to the inviter exactly once. Combined with
+  // the frontend origin to make a copyable invite URL.
+  rawToken: string;
+}
+
+export interface UpdateTeamMemberRequest {
+  role?: GymRole;
+  status?: GymUserStatus;
+}
+
+export interface AcceptInviteRequest {
+  token: string;
+}
+
+export interface AcceptInviteResponse {
+  gym: { id: string; name: string; slug: string };
+  role: GymRole;
 }

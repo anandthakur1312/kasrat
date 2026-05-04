@@ -1,5 +1,10 @@
 import type {
+  AccessResponse,
+  AcceptInviteRequest,
+  AcceptInviteResponse,
   CreateGymRequest,
+  CreateInviteRequest,
+  CreateInviteResponse,
   CreateMemberRequest,
   CreatePlanRequest,
   Gym,
@@ -11,12 +16,16 @@ import type {
   Membership,
   MembersListResponse,
   Payment,
+  PendingInvite,
   Plan,
   PublicGymResponse,
   RecordPaymentRequest,
   SlugCheckResponse,
+  TeamMember,
+  TeamResponse,
   UpdateGymRequest,
   UpdatePlanRequest,
+  UpdateTeamMemberRequest,
 } from '@gym-app/shared/types';
 import { validateSlug } from '@gym-app/shared/reservedSlugs';
 import { dateHelpers, mockState, nextId } from './mockData';
@@ -32,6 +41,9 @@ function paymentAdjustmentType(amount: number, planPrice: number): Payment['adju
   if (amount > planPrice) return 'custom_amount';
   return null;
 }
+
+const mockTeamExtras: TeamMember[] = [];
+const mockInvites: PendingInvite[] = [];
 
 // ---------- internal helpers ----------
 
@@ -490,6 +502,78 @@ export const mockApi = {
       });
     }
     return { ...mockState.gym };
+  },
+
+  // Issue #16 — mock the access/team/invite endpoints so dev mode (mock API)
+  // doesn't break. The mock owner is an admin of the mock gym; team/invite
+  // state is in-memory and resets on reload.
+  async getMyAccess(): Promise<AccessResponse> {
+    await delay();
+    return {
+      gym: { id: mockState.gym.id, name: mockState.gym.name, slug: mockState.gym.slug },
+      role: 'admin',
+      isPlatformAdmin: true,
+    };
+  },
+
+  async getTeam(_gymId: string): Promise<TeamResponse> {
+    await delay();
+    const members: TeamMember[] = [
+      {
+        ownerId: mockState.owner.id,
+        email: 'owner@example.com',
+        name: mockState.owner.name,
+        role: 'admin',
+        status: 'active',
+        joinedAt: new Date().toISOString(),
+      },
+      ...mockTeamExtras,
+    ];
+    return { members, invites: [...mockInvites] };
+  },
+
+  async updateTeamMember(
+    gymId: string,
+    ownerId: string,
+    req: UpdateTeamMemberRequest,
+  ): Promise<TeamResponse> {
+    await delay();
+    const target = mockTeamExtras.find((m) => m.ownerId === ownerId);
+    if (target) {
+      if (req.role !== undefined) target.role = req.role;
+      if (req.status !== undefined) target.status = req.status;
+    }
+    return mockApi.getTeam(gymId);
+  },
+
+  async createInvite(_gymId: string, req: CreateInviteRequest): Promise<CreateInviteResponse> {
+    await delay();
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 14);
+    const invite: PendingInvite = {
+      id: nextId('invite'),
+      email: req.email.trim().toLowerCase(),
+      role: req.role,
+      status: 'pending',
+      expiresAt: expiresAt.toISOString(),
+      createdAt: new Date().toISOString(),
+    };
+    mockInvites.push(invite);
+    return { invite, rawToken: `mock-${invite.id}` };
+  },
+
+  async revokeInvite(_gymId: string, inviteId: string): Promise<void> {
+    await delay();
+    const idx = mockInvites.findIndex((i) => i.id === inviteId);
+    if (idx >= 0) mockInvites.splice(idx, 1);
+  },
+
+  async acceptInvite(_req: AcceptInviteRequest): Promise<AcceptInviteResponse> {
+    await delay();
+    return {
+      gym: { id: mockState.gym.id, name: mockState.gym.name, slug: mockState.gym.slug },
+      role: 'staff',
+    };
   },
 
   async checkSlug(slug: string): Promise<SlugCheckResponse> {

@@ -34,18 +34,25 @@ export default function MembersListRoute() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const [gymName, setGymName] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(false);
     try {
-      const [list, gym] = await Promise.all([api.getMembersList(), api.getGym()]);
+      const [list, gym, access] = await Promise.all([
+        api.getMembersList(),
+        api.getGym(),
+        api.getMyAccess(),
+      ]);
       setData(list);
       setGymName(gym.name);
+      setIsAdmin(access.role === 'admin');
     } catch (err) {
-      // Newly-signed-in owner who hasn't completed setup yet → /setup.
+      // Issue #16: signed-in user with no active GymUser → no-access page.
+      // Random Clerk signups can no longer auto-route to /setup.
       if (err instanceof ApiError && err.code === 'NO_GYM') {
-        navigate('/setup', { replace: true });
+        navigate('/no-access', { replace: true });
         return;
       }
       setError(true);
@@ -127,6 +134,7 @@ export default function MembersListRoute() {
             open={menuOpen}
             onToggle={() => setMenuOpen((v) => !v)}
             onClose={() => setMenuOpen(false)}
+            isAdmin={isAdmin}
           />
         </div>
       </header>
@@ -406,10 +414,12 @@ function HamburgerMenu({
   open,
   onToggle,
   onClose,
+  isAdmin,
 }: {
   open: boolean;
   onToggle: () => void;
   onClose: () => void;
+  isAdmin: boolean;
 }) {
   const { t } = useTranslation();
   const { signOut } = useClerk();
@@ -442,6 +452,11 @@ function HamburgerMenu({
           <MenuItem to="/settings" onClick={onClose}>
             {t('members.menu.settings')}
           </MenuItem>
+          {isAdmin && (
+            <MenuItem to="/team" onClick={onClose}>
+              {t('members.menu.team')}
+            </MenuItem>
+          )}
           <div className="px-3 py-2 border-t border-border/60 mt-1 flex items-center justify-between gap-2">
             <span className="text-xs text-muted-foreground">{t('members.menu.language')}</span>
             <LanguageToggle />

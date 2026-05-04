@@ -3,17 +3,35 @@ import cors from '@fastify/cors';
 import { z } from 'zod';
 import type { Gym as DbGym, Membership as DbMembership } from '@prisma/client';
 import type {
+  AccessResponse,
+  AcceptInviteResponse,
+  CreateInviteResponse,
   MemberDetailResponse,
   MemberListItem,
   MembersListResponse,
+  PendingInvite,
   PublicGymResponse,
   SlugCheckResponse,
+  TeamResponse,
 } from '@gym-app/shared/types';
 import { prisma } from './db.js';
 import { addMonths, iso, parseDate, todayLocal } from './lib/dates.js';
 import { newId } from './lib/ids.js';
 import { computeStatus } from './lib/status.js';
-import { clerkAuth, getAuthenticatedOwner, getOwnerGym } from './lib/auth.js';
+import {
+  clerkAuth,
+  getAuthenticatedOwner,
+  getOwnerGym,
+  requireGymRole,
+  requirePlatformAdmin,
+} from './lib/auth.js';
+import { isPlatformAdmin } from './lib/platform-admin.js';
+import { checkAccessChange, type GymUserSummary } from './lib/gym-access.js';
+import {
+  generateInviteToken,
+  hashInviteToken,
+  inviteExpiry,
+} from './lib/invite-tokens.js';
 import { planMembershipAction } from './lib/payment-policy.js';
 import { paymentAdjustmentType } from './lib/payment-adjustment.js';
 import { toErrorResponse } from './lib/http-errors.js';
@@ -436,7 +454,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     name: z.string().optional(),
   });
 
-  app.post('/plans', async (req) => {
+  app.post('/plans', { preHandler: requireGymRole('admin') }, async (req) => {
     const body = createPlanSchema.parse(req.body);
     const { gym } = await getOwnerGym(req);
     const plan = await prisma.plan.create({
@@ -458,7 +476,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     isActive: z.boolean().optional(),
   });
 
-  app.patch<{ Params: { id: string } }>('/plans/:id', async (req) => {
+  app.patch<{ Params: { id: string } }>('/plans/:id', { preHandler: requireGymRole('admin') }, async (req) => {
     const body = updatePlanSchema.parse(req.body);
     const { gym } = await getOwnerGym(req);
     const existing = await prisma.plan.findFirst({
@@ -491,7 +509,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     gracePeriodDays: z.number().int().nonnegative().optional(),
   });
 
-  app.patch('/gym', async (req) => {
+  app.patch('/gym', { preHandler: requireGymRole('admin') }, async (req) => {
     const body = updateGymSchema.parse(req.body);
     const { gym } = await getOwnerGym(req);
     const data = { ...body };
@@ -520,19 +538,29 @@ export async function buildApp(): Promise<FastifyInstance> {
     plans: z.array(z.object({ durationMonths: z.number().int().positive(), price: z.number().int().nonnegative() })),
   });
 
-  // First-time setup only. Existing gyms are managed through /gym and /plans;
-  // rerunning setup must not replace plan templates used by live memberships.
-  app.post('/gyms', async (req) => {
+  // Issue #16: gym creation is platform-admin only. The platform admin
+  // becomes the gym's first admin via GymUser; they typically invite the
+  // real owner from the Team page after creation. The legacy Gym.ownerId
+  // column is retained for migration compatibility — it points at the
+  // platform admin who created the gym, not the operating owner.
+  app.post('/gyms', { preHandler: requirePlatformAdmin }, async (req) => {
     const body = createGymSchema.parse(req.body);
     const slug = requireValidGymSlug(body.slug);
     const owner = await getAuthenticatedOwner(req);
-    const existing = await prisma.gym.findFirst({ where: { ownerId: owner.id } });
-    if (existing) {
-      throw Object.assign(new Error('Gym already configured. Use Settings and Plans to update it.'), {
-        statusCode: 409,
-        code: 'GYM_ALREADY_CONFIGURED',
-      });
+
+    // Disallow creating a second gym for the same platform admin while we
+    // only support one active gym per user. Lift this once the multi-gym
+    // switcher lands.
+    const alreadyMember = await prisma.gymUser.findFirst({
+      where: { ownerId: owner.id, status: 'active' },
+    });
+    if (alreadyMember) {
+      throw Object.assign(
+        new Error('You already have an active gym. Disable that membership before creating another.'),
+        { statusCode: 409, code: 'ALREADY_HAS_GYM' },
+      );
     }
+
     await assertSlugAvailable(slug);
 
     let created: DbGym;
@@ -566,6 +594,16 @@ export async function buildApp(): Promise<FastifyInstance> {
           });
         }
 
+        await tx.gymUser.create({
+          data: {
+            id: newId('gymuser'),
+            gymId: gym.id,
+            ownerId: owner.id,
+            role: 'admin',
+            status: 'active',
+          },
+        });
+
         return gym;
       });
     } catch (err) {
@@ -574,6 +612,300 @@ export async function buildApp(): Promise<FastifyInstance> {
     }
 
     return toGym(created);
+  });
+
+  // ---- gym access (issue #16) ----
+
+  // Returns the caller's current access state. Used by the frontend to pick
+  // the landing route: app, no-access screen, or platform-admin gym creation.
+  app.get('/me/access', async (req): Promise<AccessResponse> => {
+    const owner = await getAuthenticatedOwner(req);
+    const membership = await prisma.gymUser.findFirst({
+      where: { ownerId: owner.id, status: 'active' },
+      include: { gym: true },
+    });
+    return {
+      gym: membership
+        ? { id: membership.gym.id, name: membership.gym.name, slug: membership.gym.slug }
+        : null,
+      role: membership ? (membership.role as 'admin' | 'staff') : null,
+      isPlatformAdmin: isPlatformAdmin(owner.email),
+    };
+  });
+
+  async function loadTeam(gymId: string): Promise<TeamResponse> {
+    const [members, invites] = await Promise.all([
+      prisma.gymUser.findMany({
+        where: { gymId },
+        include: { owner: true },
+        orderBy: { joinedAt: 'asc' },
+      }),
+      prisma.gymInvite.findMany({
+        where: { gymId, status: 'pending' },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+    return {
+      members: members.map((m) => ({
+        ownerId: m.ownerId,
+        email: m.owner.email,
+        name: m.owner.name,
+        role: m.role as 'admin' | 'staff',
+        status: m.status as 'active' | 'disabled',
+        joinedAt: m.joinedAt.toISOString(),
+      })),
+      invites: invites.map(toPendingInvite),
+    };
+  }
+
+  function toPendingInvite(row: {
+    id: string;
+    email: string;
+    role: string;
+    status: string;
+    expiresAt: Date;
+    createdAt: Date;
+  }): PendingInvite {
+    return {
+      id: row.id,
+      email: row.email,
+      role: row.role as 'admin' | 'staff',
+      status: row.status as 'pending' | 'accepted' | 'revoked' | 'expired',
+      expiresAt: row.expiresAt.toISOString(),
+      createdAt: row.createdAt.toISOString(),
+    };
+  }
+
+  app.get<{ Params: { gymId: string } }>(
+    '/gyms/:gymId/team',
+    { preHandler: requireGymRole('admin') },
+    async (req): Promise<TeamResponse> => {
+      const { gym } = await getOwnerGym(req);
+      if (gym.id !== req.params.gymId) {
+        throw Object.assign(new Error('Gym not found'), { statusCode: 404 });
+      }
+      return loadTeam(gym.id);
+    },
+  );
+
+  const updateTeamMemberSchema = z.object({
+    role: z.enum(['admin', 'staff']).optional(),
+    status: z.enum(['active', 'disabled']).optional(),
+  });
+
+  app.patch<{ Params: { gymId: string; ownerId: string } }>(
+    '/gyms/:gymId/team/:ownerId',
+    { preHandler: requireGymRole('admin') },
+    async (req) => {
+      const body = updateTeamMemberSchema.parse(req.body);
+      if (body.role === undefined && body.status === undefined) {
+        throw Object.assign(new Error('Nothing to update'), { statusCode: 400 });
+      }
+      const { gym } = await getOwnerGym(req);
+      if (gym.id !== req.params.gymId) {
+        throw Object.assign(new Error('Gym not found'), { statusCode: 404 });
+      }
+
+      const all = await prisma.gymUser.findMany({ where: { gymId: gym.id } });
+      const summaries: GymUserSummary[] = all.map((m) => ({
+        ownerId: m.ownerId,
+        role: m.role as 'admin' | 'staff',
+        status: m.status as 'active' | 'disabled',
+      }));
+
+      if (body.role !== undefined) {
+        const check = checkAccessChange(summaries, {
+          kind: 'changeRole',
+          targetOwnerId: req.params.ownerId,
+          newRole: body.role,
+        });
+        if (!check.ok) {
+          throw Object.assign(new Error(check.code), {
+            statusCode: check.code === 'NOT_FOUND' ? 404 : 409,
+            code: check.code,
+          });
+        }
+      }
+      if (body.status === 'disabled') {
+        const check = checkAccessChange(summaries, {
+          kind: 'disable',
+          targetOwnerId: req.params.ownerId,
+        });
+        if (!check.ok) {
+          throw Object.assign(new Error(check.code), {
+            statusCode: check.code === 'NOT_FOUND' ? 404 : 409,
+            code: check.code,
+          });
+        }
+      }
+
+      await prisma.gymUser.update({
+        where: {
+          gymId_ownerId: { gymId: gym.id, ownerId: req.params.ownerId },
+        },
+        data: {
+          ...(body.role !== undefined ? { role: body.role } : {}),
+          ...(body.status !== undefined ? { status: body.status } : {}),
+        },
+      });
+      return loadTeam(gym.id);
+    },
+  );
+
+  const createInviteSchema = z.object({
+    email: z.string().email(),
+    role: z.enum(['admin', 'staff']),
+  });
+
+  app.post<{ Params: { gymId: string } }>(
+    '/gyms/:gymId/invites',
+    { preHandler: requireGymRole('admin') },
+    async (req): Promise<CreateInviteResponse> => {
+      const body = createInviteSchema.parse(req.body);
+      const { gym, owner } = await getOwnerGym(req);
+      if (gym.id !== req.params.gymId) {
+        throw Object.assign(new Error('Gym not found'), { statusCode: 404 });
+      }
+      const email = body.email.trim().toLowerCase();
+
+      // If the email already maps to an active member of this gym, reject.
+      const existingMember = await prisma.owner.findUnique({ where: { email } });
+      if (existingMember) {
+        const active = await prisma.gymUser.findFirst({
+          where: { gymId: gym.id, ownerId: existingMember.id, status: 'active' },
+        });
+        if (active) {
+          throw Object.assign(new Error('User already has access'), {
+            statusCode: 409,
+            code: 'ALREADY_MEMBER',
+          });
+        }
+      }
+
+      // One outstanding pending invite per email per gym keeps things simple.
+      // Re-inviting revokes the old one.
+      await prisma.gymInvite.updateMany({
+        where: { gymId: gym.id, email, status: 'pending' },
+        data: { status: 'revoked' },
+      });
+
+      const { raw, hash } = generateInviteToken();
+      const created = await prisma.gymInvite.create({
+        data: {
+          id: newId('invite'),
+          gymId: gym.id,
+          email,
+          role: body.role,
+          tokenHash: hash,
+          invitedById: owner.id,
+          expiresAt: inviteExpiry(),
+        },
+      });
+      return { invite: toPendingInvite(created), rawToken: raw };
+    },
+  );
+
+  app.delete<{ Params: { gymId: string; inviteId: string } }>(
+    '/gyms/:gymId/invites/:inviteId',
+    { preHandler: requireGymRole('admin') },
+    async (req) => {
+      const { gym } = await getOwnerGym(req);
+      if (gym.id !== req.params.gymId) {
+        throw Object.assign(new Error('Gym not found'), { statusCode: 404 });
+      }
+      // Conditional update: only revoke if still pending. No-ops for already
+      // accepted/revoked rows are silent — admin already got the outcome.
+      await prisma.gymInvite.updateMany({
+        where: { id: req.params.inviteId, gymId: gym.id, status: 'pending' },
+        data: { status: 'revoked' },
+      });
+      return { ok: true };
+    },
+  );
+
+  const acceptInviteSchema = z.object({ token: z.string().min(1) });
+
+  app.post('/invites/accept', async (req): Promise<AcceptInviteResponse> => {
+    const body = acceptInviteSchema.parse(req.body);
+    const owner = await getAuthenticatedOwner(req);
+    const tokenHash = hashInviteToken(body.token);
+
+    const invite = await prisma.gymInvite.findUnique({
+      where: { tokenHash },
+      include: { gym: true },
+    });
+    if (!invite) {
+      throw Object.assign(new Error('Invite not found'), {
+        statusCode: 404,
+        code: 'INVITE_NOT_FOUND',
+      });
+    }
+    if (invite.status !== 'pending') {
+      throw Object.assign(new Error('Invite is no longer valid'), {
+        statusCode: 409,
+        code: 'INVITE_NOT_PENDING',
+      });
+    }
+    if (invite.expiresAt < new Date()) {
+      // Mark it expired so the next list call drops it from the UI.
+      await prisma.gymInvite.updateMany({
+        where: { id: invite.id, status: 'pending' },
+        data: { status: 'expired' },
+      });
+      throw Object.assign(new Error('Invite has expired'), {
+        statusCode: 410,
+        code: 'INVITE_EXPIRED',
+      });
+    }
+    if (owner.email.trim().toLowerCase() !== invite.email.toLowerCase()) {
+      throw Object.assign(new Error('Invite was issued to a different email'), {
+        statusCode: 403,
+        code: 'INVITE_EMAIL_MISMATCH',
+      });
+    }
+
+    // Atomic single-use accept: claim the invite first. updateMany returns
+    // count=0 if a concurrent request already accepted/revoked it.
+    const claim = await prisma.gymInvite.updateMany({
+      where: { id: invite.id, status: 'pending' },
+      data: {
+        status: 'accepted',
+        acceptedById: owner.id,
+        acceptedAt: new Date(),
+      },
+    });
+    if (claim.count === 0) {
+      throw Object.assign(new Error('Invite is no longer valid'), {
+        statusCode: 409,
+        code: 'INVITE_NOT_PENDING',
+      });
+    }
+
+    // upsert in case the user was previously a disabled member of the same
+    // gym — re-accepting reactivates with the new role.
+    await prisma.gymUser.upsert({
+      where: {
+        gymId_ownerId: { gymId: invite.gymId, ownerId: owner.id },
+      },
+      create: {
+        id: newId('gymuser'),
+        gymId: invite.gymId,
+        ownerId: owner.id,
+        role: invite.role,
+        status: 'active',
+        joinedAt: new Date(),
+      },
+      update: {
+        role: invite.role,
+        status: 'active',
+        joinedAt: new Date(),
+      },
+    });
+
+    return {
+      gym: { id: invite.gym.id, name: invite.gym.name, slug: invite.gym.slug },
+      role: invite.role as 'admin' | 'staff',
+    };
   });
 
   // ---- public gym page (no auth) ----

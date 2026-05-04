@@ -15,13 +15,14 @@ datasource db {
 }
 
 model Owner {
-  id           String   @id
-  clerkUserId  String   @unique
-  email        String   @unique
+  id           String      @id
+  clerkUserId  String      @unique
+  email        String      @unique
   name         String
   phone        String?
-  createdAt    DateTime @default(now())
+  createdAt    DateTime    @default(now())
   gyms         Gym[]
+  gymUsers     GymUser[]
 }
 
 model Gym {
@@ -39,6 +40,52 @@ model Gym {
   owner           Owner        @relation(fields: [ownerId], references: [id])
   plans           Plan[]
   members         Member[]
+  gymUsers        GymUser[]
+  invites         GymInvite[]
+}
+
+// Issue #16: shared gym access. A user can access a gym only if they have an
+// active GymUser row for that gym. Roles are 'admin' (full management) and
+// 'staff' (member/payment ops only). status is 'active' or 'disabled' —
+// disabled rows are kept for audit so payment.recordedBy still resolves.
+model GymUser {
+  id        String    @id
+  gymId     String
+  ownerId   String
+  role      String    // 'admin' | 'staff'
+  status    String    @default("active") // 'active' | 'disabled'
+  createdAt DateTime  @default(now())
+  joinedAt  DateTime  @default(now())
+
+  gym   Gym   @relation(fields: [gymId], references: [id])
+  owner Owner @relation(fields: [ownerId], references: [id])
+
+  @@unique([gymId, ownerId])
+  @@index([ownerId])
+  @@index([gymId])
+}
+
+// Invite issued by a gym admin. tokenHash holds a SHA-256 of the raw token;
+// the raw token is shown to the inviter exactly once (for them to share via
+// WhatsApp/SMS). Acceptance is a single conditional UPDATE on status to make
+// it safe under concurrent clicks.
+model GymInvite {
+  id           String    @id
+  gymId        String
+  email        String
+  role         String    // 'admin' | 'staff'
+  status       String    @default("pending") // 'pending' | 'accepted' | 'revoked' | 'expired'
+  tokenHash    String    @unique
+  invitedById  String
+  acceptedById String?
+  expiresAt    DateTime
+  createdAt    DateTime  @default(now())
+  acceptedAt   DateTime?
+
+  gym Gym @relation(fields: [gymId], references: [id])
+
+  @@index([gymId])
+  @@index([email])
 }
 
 model Plan {

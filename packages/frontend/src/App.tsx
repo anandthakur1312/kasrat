@@ -11,6 +11,9 @@ import SettingsRoute from '@/routes/settings';
 import { SignInRoute, SignUpRoute } from '@/routes/auth';
 import SetupRoute from '@/routes/setup';
 import PublicGymRoute from '@/routes/public-gym';
+import NoAccessRoute from '@/routes/no-access';
+import TeamRoute from '@/routes/team';
+import InviteAcceptRoute from '@/routes/invite-accept';
 import { ClerkTokenBridge } from '@/components/clerk-token-bridge';
 import { RequireAuth } from '@/components/require-auth';
 
@@ -60,6 +63,9 @@ export default function App() {
         {/* Protected — Clerk session required */}
         <Route path="/" element={<RequireAuth><MembersListRoute /></RequireAuth>} />
         <Route path="/setup" element={<RequireAuth><SetupRoute /></RequireAuth>} />
+        <Route path="/no-access" element={<RequireAuth><NoAccessRoute /></RequireAuth>} />
+        <Route path="/invites/:token" element={<RequireAuth><InviteAcceptRoute /></RequireAuth>} />
+        <Route path="/team" element={<RequireAuth><TeamRoute /></RequireAuth>} />
         <Route path="/members/new" element={<RequireAuth><AddMemberRoute /></RequireAuth>} />
         <Route path="/members/:id" element={<RequireAuth><MemberDetailRoute /></RequireAuth>} />
         <Route path="/members/:id/edit" element={<RequireAuth><EditMemberRoute /></RequireAuth>} />

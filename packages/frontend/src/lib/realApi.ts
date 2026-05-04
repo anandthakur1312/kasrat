@@ -1,5 +1,10 @@
 import type {
+  AccessResponse,
+  AcceptInviteRequest,
+  AcceptInviteResponse,
   CreateGymRequest,
+  CreateInviteRequest,
+  CreateInviteResponse,
   CreateMemberRequest,
   CreatePlanRequest,
   Gym,
@@ -11,14 +16,18 @@ import type {
   PublicGymResponse,
   RecordPaymentRequest,
   SlugCheckResponse,
+  TeamResponse,
   UpdateGymRequest,
   UpdateMemberRequest,
   UpdatePlanRequest,
+  UpdateTeamMemberRequest,
 } from '@gym-app/shared/types';
 
 const BASE_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:3001';
 
 // Public payment page (`/public/gyms/:slug`) doesn't need a token.
+// Invite acceptance does need a token (the accepting user must be signed in)
+// — only the public gym page is truly public.
 const PUBLIC_PREFIXES = ['/public/'];
 
 // Wired up at app boot from a hook (`useAuth().getToken`) — see
@@ -102,4 +111,28 @@ export const realApi = {
     request<SlugCheckResponse>(`/public/slugs/check?slug=${encodeURIComponent(slug)}`),
   getPublicGym: (slug: string) =>
     request<PublicGymResponse>(`/public/gyms/${encodeURIComponent(slug)}`),
+  // Issue #16
+  getMyAccess: () => request<AccessResponse>('/me/access'),
+  getTeam: (gymId: string) =>
+    request<TeamResponse>(`/gyms/${encodeURIComponent(gymId)}/team`),
+  updateTeamMember: (gymId: string, ownerId: string, req: UpdateTeamMemberRequest) =>
+    request<TeamResponse>(
+      `/gyms/${encodeURIComponent(gymId)}/team/${encodeURIComponent(ownerId)}`,
+      { method: 'PATCH', body: JSON.stringify(req) },
+    ),
+  createInvite: (gymId: string, req: CreateInviteRequest) =>
+    request<CreateInviteResponse>(
+      `/gyms/${encodeURIComponent(gymId)}/invites`,
+      { method: 'POST', body: JSON.stringify(req) },
+    ),
+  revokeInvite: (gymId: string, inviteId: string) =>
+    request<{ ok: true }>(
+      `/gyms/${encodeURIComponent(gymId)}/invites/${encodeURIComponent(inviteId)}`,
+      { method: 'DELETE' },
+    ).then(() => undefined),
+  acceptInvite: (req: AcceptInviteRequest) =>
+    request<AcceptInviteResponse>('/invites/accept', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    }),
 };
