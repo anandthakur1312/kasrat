@@ -12,8 +12,14 @@ export interface Owner {
   name: string;
   email: string;
   phone: string | null;
+  isPlatformAdmin: boolean;
   createdAt: string; // ISO 8601
 }
+
+export type GymRole = 'admin' | 'staff';
+export type GymUserStatus = 'active' | 'disabled';
+export type GymStatus = 'active' | 'pending' | 'rejected';
+export type AccessRequestStatus = 'pending' | 'approved' | 'rejected' | 'duplicate';
 
 export interface Gym {
   id: string;
@@ -190,4 +196,109 @@ export interface UpdatePlanRequest {
   price?: number;
   name?: string;
   isActive?: boolean;
+}
+
+// ---- Access / team / invites ----
+
+export interface MeAccessResponse {
+  owner: Owner;
+  gyms: Array<{ gym: Gym; role: GymRole }>;
+  invites: Array<{
+    id: string;
+    gymId: string;
+    gymName: string;
+    role: GymRole;
+    expiresAt: string;
+  }>;
+}
+
+export interface TeamMember {
+  id: string; // GymUser.id
+  ownerId: string;
+  name: string;
+  email: string;
+  role: GymRole;
+  status: GymUserStatus;
+  createdAt: string;
+}
+
+export interface TeamInvite {
+  id: string;
+  email: string;
+  role: GymRole;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export interface TeamResponse {
+  members: TeamMember[];
+  invites: TeamInvite[];
+}
+
+export interface CreateInviteRequest {
+  email: string;
+  role: GymRole;
+}
+
+// Returned exactly once when an invite is created — the admin shares the
+// resulting URL manually until an email pipeline exists.
+export interface CreateInviteResponse {
+  id: string;
+  email: string;
+  role: GymRole;
+  token: string;
+  expiresAt: string;
+}
+
+export interface UpdateTeamMemberRequest {
+  role?: GymRole;
+  status?: GymUserStatus;
+}
+
+export interface AcceptInviteRequest {
+  token: string;
+}
+
+export interface AcceptInviteResponse {
+  gym: Gym;
+  role: GymRole;
+}
+
+export interface CreateAccessRequestRequest {
+  gymName: string;
+  contactPhone: string;
+  address: string;
+  note?: string;
+}
+
+export interface AccessRequestSummary {
+  id: string;
+  gymName: string;
+  status: AccessRequestStatus;
+  createdAt: string;
+}
+
+export interface AdminAccessRequest {
+  id: string;
+  gymName: string;
+  contactPhone: string;
+  address: string;
+  note: string | null;
+  status: AccessRequestStatus;
+  requesterName: string;
+  requesterEmail: string;
+  reviewedByName: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+}
+
+export interface AdminGymSummary {
+  id: string;
+  name: string;
+  slug: string;
+  status: GymStatus;
+  createdByName: string;
+  createdByEmail: string;
+  memberCount: number;
+  createdAt: string;
 }

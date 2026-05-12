@@ -24,15 +24,21 @@ async function main() {
 
   // Owner: upsert keyed on clerkUserId so a JIT-created Owner row in prod
   // (created when the user signed in for the first time) is preserved and
-  // simply gets its mirror fields filled in.
+  // simply gets its mirror fields filled in. The seed owner is also given
+  // platform-admin so they can create gyms and review access requests in dev.
   const owner = await prisma.owner.upsert({
     where: { clerkUserId: SEED_CLERK_USER_ID },
-    update: { name: SEED_OWNER_NAME, email: SEED_OWNER_EMAIL },
+    update: {
+      name: SEED_OWNER_NAME,
+      email: SEED_OWNER_EMAIL,
+      isPlatformAdmin: true,
+    },
     create: {
       id: newId('owner'),
       clerkUserId: SEED_CLERK_USER_ID,
       name: SEED_OWNER_NAME,
       email: SEED_OWNER_EMAIL,
+      isPlatformAdmin: true,
     },
   });
 
@@ -55,6 +61,8 @@ async function main() {
     await prisma.membership.deleteMany({ where: { member: { gymId: g.id } } });
     await prisma.member.deleteMany({ where: { gymId: g.id } });
     await prisma.plan.deleteMany({ where: { gymId: g.id } });
+    await prisma.gymInvite.deleteMany({ where: { gymId: g.id } });
+    await prisma.gymUser.deleteMany({ where: { gymId: g.id } });
     await prisma.gym.delete({ where: { id: g.id } });
   }
 
@@ -63,6 +71,7 @@ async function main() {
       id: newId('gym'),
       ownerId: owner.id,
       name: SEED_GYM_NAME,
+      normalizedName: SEED_GYM_NAME.trim().toLowerCase(),
       slug: SEED_GYM_SLUG,
       address: '123 MG Road,\nSagar, Madhya Pradesh 470001',
       timings: 'Mon–Sat\nMorning: 6:00 AM – 10:00 AM\nEvening: 5:00 PM – 9:00 PM',
@@ -70,6 +79,21 @@ async function main() {
       upiId: 'sagargym@okaxis',
       upiDisplayName: SEED_GYM_NAME,
       gracePeriodDays: 5,
+      status: 'active',
+      approvedById: owner.id,
+      approvedAt: new Date(),
+    },
+  });
+
+  // GymUser{admin} for the seed owner so the new access model lights up.
+  await prisma.gymUser.create({
+    data: {
+      id: newId('gymuser'),
+      gymId: gym.id,
+      ownerId: owner.id,
+      role: 'admin',
+      status: 'active',
+      joinedAt: new Date(),
     },
   });
 

@@ -1,8 +1,18 @@
 import type {
+  AcceptInviteRequest,
+  AcceptInviteResponse,
+  AccessRequestSummary,
+  AdminAccessRequest,
+  AdminGymSummary,
+  CreateAccessRequestRequest,
   CreateGymRequest,
+  CreateInviteRequest,
+  CreateInviteResponse,
   CreateMemberRequest,
   CreatePlanRequest,
+  GymRole,
   Gym,
+  MeAccessResponse,
   Member,
   UpdateMemberRequest,
   MemberDetailResponse,
@@ -15,8 +25,11 @@ import type {
   PublicGymResponse,
   RecordPaymentRequest,
   SlugCheckResponse,
+  TeamMember,
+  TeamResponse,
   UpdateGymRequest,
   UpdatePlanRequest,
+  UpdateTeamMemberRequest,
 } from '@gym-app/shared/types';
 import { validateSlug } from '@gym-app/shared/reservedSlugs';
 import { dateHelpers, mockState, nextId } from './mockData';
@@ -502,6 +515,107 @@ export const mockApi = {
       available,
       ...(available ? {} : { code: 'SLUG_UNAVAILABLE' as const }),
     };
+  },
+
+  // ---- access / team / invites (mock stubs — single owner is admin) ----
+  async getMyAccess(): Promise<MeAccessResponse> {
+    await delay();
+    return {
+      owner: { ...mockState.owner },
+      gyms: [{ gym: { ...mockState.gym }, role: 'admin' }],
+      invites: [],
+    };
+  },
+
+  async listMyAccessRequests(): Promise<AccessRequestSummary[]> {
+    await delay();
+    return [];
+  },
+
+  async createAccessRequest(req: CreateAccessRequestRequest): Promise<AccessRequestSummary> {
+    await delay();
+    return {
+      id: nextId('accreq'),
+      gymName: req.gymName,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    };
+  },
+
+  async acceptInvite(_req: AcceptInviteRequest): Promise<AcceptInviteResponse> {
+    void _req;
+    await delay();
+    return { gym: { ...mockState.gym }, role: 'admin' };
+  },
+
+  async getTeam(): Promise<TeamResponse> {
+    await delay();
+    const self: TeamMember = {
+      id: 'gymuser-self',
+      ownerId: mockState.owner.id,
+      name: mockState.owner.name,
+      email: mockState.owner.email,
+      role: 'admin',
+      status: 'active',
+      createdAt: mockState.owner.createdAt,
+    };
+    return { members: [self], invites: [] };
+  },
+
+  async createInvite(req: CreateInviteRequest): Promise<CreateInviteResponse> {
+    await delay();
+    return {
+      id: nextId('invite'),
+      email: req.email,
+      role: req.role,
+      token: nextId('tok'),
+      expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+    };
+  },
+
+  async revokeInvite(_id: string): Promise<void> {
+    void _id;
+    await delay();
+  },
+
+  async updateTeamMember(id: string, req: UpdateTeamMemberRequest): Promise<{
+    id: string;
+    role: GymRole;
+    status: 'active' | 'disabled';
+  }> {
+    await delay();
+    return { id, role: req.role ?? 'admin', status: req.status ?? 'active' };
+  },
+
+  async removeTeamMember(_id: string): Promise<void> {
+    void _id;
+    await delay();
+  },
+
+  async adminListAccessRequests(): Promise<AdminAccessRequest[]> {
+    await delay();
+    return [];
+  },
+
+  async adminReviewAccessRequest(id: string, status: 'approved' | 'rejected' | 'duplicate') {
+    await delay();
+    return { id, status };
+  },
+
+  async adminListGyms(): Promise<AdminGymSummary[]> {
+    await delay();
+    return [
+      {
+        id: mockState.gym.id,
+        name: mockState.gym.name,
+        slug: mockState.gym.slug,
+        status: 'active',
+        createdByName: mockState.owner.name,
+        createdByEmail: mockState.owner.email,
+        memberCount: 1,
+        createdAt: mockState.gym.createdAt,
+      },
+    ];
   },
 };
 

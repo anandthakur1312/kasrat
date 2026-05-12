@@ -1,8 +1,17 @@
 import type {
+  AcceptInviteRequest,
+  AcceptInviteResponse,
+  AccessRequestSummary,
+  AdminAccessRequest,
+  AdminGymSummary,
+  CreateAccessRequestRequest,
   CreateGymRequest,
+  CreateInviteRequest,
+  CreateInviteResponse,
   CreateMemberRequest,
   CreatePlanRequest,
   Gym,
+  MeAccessResponse,
   Member,
   MemberDetailResponse,
   MembersListResponse,
@@ -11,9 +20,11 @@ import type {
   PublicGymResponse,
   RecordPaymentRequest,
   SlugCheckResponse,
+  TeamResponse,
   UpdateGymRequest,
   UpdateMemberRequest,
   UpdatePlanRequest,
+  UpdateTeamMemberRequest,
 } from '@gym-app/shared/types';
 
 const BASE_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:3001';
@@ -72,6 +83,47 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const realApi = {
+  // Access / identity
+  getMyAccess: () => request<MeAccessResponse>('/me/access'),
+  listMyAccessRequests: () => request<AccessRequestSummary[]>('/me/access-requests'),
+  createAccessRequest: (req: CreateAccessRequestRequest) =>
+    request<AccessRequestSummary>('/access-requests', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    }),
+  acceptInvite: (req: AcceptInviteRequest) =>
+    request<AcceptInviteResponse>('/invites/accept', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    }),
+
+  // Team management (per-gym)
+  getTeam: () => request<TeamResponse>('/team'),
+  createInvite: (req: CreateInviteRequest) =>
+    request<CreateInviteResponse>('/team/invites', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    }),
+  revokeInvite: (id: string) =>
+    request<{ ok: true }>(`/team/invites/${encodeURIComponent(id)}`, { method: 'DELETE' }).then(() => undefined),
+  updateTeamMember: (id: string, req: UpdateTeamMemberRequest) =>
+    request<{ id: string; role: 'admin' | 'staff'; status: 'active' | 'disabled' }>(
+      `/team/members/${encodeURIComponent(id)}`,
+      { method: 'PATCH', body: JSON.stringify(req) },
+    ),
+  removeTeamMember: (id: string) =>
+    request<{ ok: true }>(`/team/members/${encodeURIComponent(id)}`, { method: 'DELETE' }).then(() => undefined),
+
+  // Platform admin
+  adminListAccessRequests: () => request<AdminAccessRequest[]>('/admin/access-requests'),
+  adminReviewAccessRequest: (id: string, status: 'approved' | 'rejected' | 'duplicate') =>
+    request<{ id: string; status: string }>(`/admin/access-requests/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    }),
+  adminListGyms: () => request<AdminGymSummary[]>('/admin/gyms'),
+
+  // Existing endpoints
   getMembersList: () => request<MembersListResponse>('/members'),
   getMemberDetail: (id: string) => request<MemberDetailResponse>(`/members/${encodeURIComponent(id)}`),
   createMember: (req: CreateMemberRequest) =>

@@ -10,11 +10,14 @@ import { ConfirmDialog } from '@/components/confirm-dialog';
 import { OwnerPageHeader } from '@/components/owner-page-header';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { useAccess } from '@/lib/access';
 
 export default function MemberDetailRoute() {
   const { id } = useParams<{ id: string }>();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { currentRole } = useAccess();
+  const canDelete = currentRole === 'admin';
   const [data, setData] = useState<MemberDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -58,6 +61,7 @@ export default function MemberDetailRoute() {
             open={menuOpen}
             onToggle={() => setMenuOpen((v) => !v)}
             onClose={() => setMenuOpen(false)}
+            showRemove={canDelete}
             onEdit={() => {
               setMenuOpen(false);
               navigate(`/members/${id}/edit`);
@@ -93,6 +97,7 @@ export default function MemberDetailRoute() {
 
 function DetailMenu({
   open,
+  showRemove,
   onToggle,
   onClose,
   onEdit,
@@ -103,6 +108,7 @@ function DetailMenu({
   onClose: () => void;
   onEdit: () => void;
   onRemove: () => void;
+  showRemove: boolean;
 }) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
@@ -135,13 +141,15 @@ function DetailMenu({
           >
             {t('detail.menu.edit')}
           </button>
-          <button
-            type="button"
-            onClick={onRemove}
-            className="w-full text-left px-3 py-2 text-sm text-overdue-text hover:bg-overdue-bg"
-          >
-            {t('detail.menu.remove')}
-          </button>
+          {showRemove && (
+            <button
+              type="button"
+              onClick={onRemove}
+              className="w-full text-left px-3 py-2 text-sm text-overdue-text hover:bg-overdue-bg"
+            >
+              {t('detail.menu.remove')}
+            </button>
+          )}
         </div>
       )}
     </div>
