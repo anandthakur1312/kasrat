@@ -48,6 +48,7 @@ const owner: Owner = {
   name: 'Anand Sharma',
   email: 'anand@example.com',
   phone: null,
+  isPlatformAdmin: true,
   createdAt: yearAgoIso,
 };
 

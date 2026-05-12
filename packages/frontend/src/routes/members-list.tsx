@@ -10,6 +10,7 @@ import { Avatar } from '@/components/avatar';
 import { LanguageToggle } from '@/components/language-toggle';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { useAccess } from '@/lib/access';
 
 type StatusFilter = 'all' | 'overdue' | 'expiring' | 'scheduled' | 'active';
 type SessionFilter = MemberSession | null;
@@ -43,9 +44,11 @@ export default function MembersListRoute() {
       setData(list);
       setGymName(gym.name);
     } catch (err) {
-      // Newly-signed-in owner who hasn't completed setup yet → /setup.
-      if (err instanceof ApiError && err.code === 'NO_GYM') {
-        navigate('/setup', { replace: true });
+      // Users without a GymUser get bounced to /no-access. RequireGymAccess
+      // normally catches this on mount, but a server-side state change while
+      // the page is open can still surface it here.
+      if (err instanceof ApiError && err.code === 'NO_GYM_ACCESS') {
+        navigate('/no-access', { replace: true });
         return;
       }
       setError(true);
@@ -413,6 +416,7 @@ function HamburgerMenu({
 }) {
   const { t } = useTranslation();
   const { signOut } = useClerk();
+  const { currentRole, isPlatformAdmin } = useAccess();
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -439,9 +443,21 @@ function HamburgerMenu({
           <MenuItem to="/plans" onClick={onClose}>
             {t('members.menu.plans')}
           </MenuItem>
-          <MenuItem to="/settings" onClick={onClose}>
-            {t('members.menu.settings')}
-          </MenuItem>
+          {currentRole === 'admin' && (
+            <MenuItem to="/team" onClick={onClose}>
+              {t('team.title')}
+            </MenuItem>
+          )}
+          {currentRole === 'admin' && (
+            <MenuItem to="/settings" onClick={onClose}>
+              {t('members.menu.settings')}
+            </MenuItem>
+          )}
+          {isPlatformAdmin && (
+            <MenuItem to="/admin" onClick={onClose}>
+              {t('admin.title')}
+            </MenuItem>
+          )}
           <div className="px-3 py-2 border-t border-border/60 mt-1 flex items-center justify-between gap-2">
             <span className="text-xs text-muted-foreground">{t('members.menu.language')}</span>
             <LanguageToggle />

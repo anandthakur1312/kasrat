@@ -14,20 +14,36 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Owner represents an authenticated app user (one Clerk user → one Owner row).
+// Naming is preserved from the pre-membership era; access to a gym now flows
+// through GymUser, not Gym.ownerId.
 model Owner {
-  id           String   @id
-  clerkUserId  String   @unique
-  email        String   @unique
-  name         String
-  phone        String?
-  createdAt    DateTime @default(now())
-  gyms         Gym[]
+  id              String    @id
+  clerkUserId     String    @unique
+  email           String    @unique
+  name            String
+  phone           String?
+  isPlatformAdmin Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+
+  createdGyms     Gym[]              @relation("GymCreatedBy")
+  approvedGyms    Gym[]              @relation("GymApprovedBy")
+  gymUsers        GymUser[]
+  invitesSent     GymInvite[]        @relation("InviteSentBy")
+  invitesAccepted GymInvite[]        @relation("InviteAcceptedBy")
+  accessRequests  GymAccessRequest[] @relation("AccessRequestedBy")
+  accessReviewed  GymAccessRequest[] @relation("AccessReviewedBy")
 }
 
+// Gym.ownerId is legacy: it captures the user who originally created the gym
+// (now redundant with GymUser{role:admin}, but useful for audit). Live access
+// decisions read GymUser, not ownerId.
 model Gym {
   id              String       @id
   ownerId         String
+  status          String       @default("active") // pending | active | rejected
   name            String
+  normalizedName  String?
   slug            String       @unique
   address         String
   timings         String
@@ -35,10 +51,80 @@ model Gym {
   upiId           String
   upiDisplayName  String
   gracePeriodDays Int          @default(3)
+  approvedById    String?
+  approvedAt      DateTime?
   createdAt       DateTime     @default(now())
-  owner           Owner        @relation(fields: [ownerId], references: [id])
+
+  owner           Owner        @relation("GymCreatedBy", fields: [ownerId], references: [id])
+  approvedBy      Owner?       @relation("GymApprovedBy", fields: [approvedById], references: [id])
   plans           Plan[]
   members         Member[]
+  gymUsers        GymUser[]
+  invites         GymInvite[]
+}
+
+// Per-(gym, owner) membership row. A user can access a gym iff an active
+// GymUser exists for them. Role is `admin` (full) or `staff` (limited).
+model GymUser {
+  id        String    @id
+  gymId     String
+  ownerId   String
+  role      String    // admin | staff
+  status    String    @default("active") // active | disabled
+  createdAt DateTime  @default(now())
+  joinedAt  DateTime?
+
+  gym       Gym       @relation(fields: [gymId], references: [id])
+  owner     Owner     @relation(fields: [ownerId], references: [id])
+
+  @@unique([gymId, ownerId])
+  @@index([ownerId])
+  @@index([gymId])
+}
+
+// Email-bound invitation. We store only the SHA-256 hash of the invite token;
+// the raw token lives in the link sent to the invitee.
+model GymInvite {
+  id           String    @id
+  gymId        String
+  email        String
+  role         String    // admin | staff
+  status       String    @default("pending") // pending | accepted | revoked | expired
+  tokenHash    String    @unique
+  invitedById  String?
+  acceptedById String?
+  expiresAt    DateTime
+  createdAt    DateTime  @default(now())
+  acceptedAt   DateTime?
+
+  gym          Gym       @relation(fields: [gymId], references: [id])
+  invitedBy    Owner?    @relation("InviteSentBy", fields: [invitedById], references: [id])
+  acceptedBy   Owner?    @relation("InviteAcceptedBy", fields: [acceptedById], references: [id])
+
+  @@index([gymId])
+  @@index([email])
+  @@index([status])
+}
+
+// Self-serve "I want a gym" intake. Platform admins review these and either
+// approve (creating a Gym + GymUser{admin}) or reject.
+model GymAccessRequest {
+  id           String    @id
+  ownerId      String
+  gymName      String
+  contactPhone String
+  address      String
+  note         String?
+  status       String    @default("pending") // pending | approved | rejected | duplicate
+  reviewedById String?
+  reviewedAt   DateTime?
+  createdAt    DateTime  @default(now())
+
+  owner        Owner     @relation("AccessRequestedBy", fields: [ownerId], references: [id])
+  reviewedBy   Owner?    @relation("AccessReviewedBy", fields: [reviewedById], references: [id])
+
+  @@index([status])
+  @@index([ownerId])
 }
 
 model Plan {

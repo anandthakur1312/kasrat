@@ -1,6 +1,10 @@
 import type { FastifyRequest } from 'fastify';
 import { createClerkClient, verifyToken } from '@clerk/backend';
-import type { Owner as DbOwner, Gym as DbGym } from '@prisma/client';
+import type {
+  Gym as DbGym,
+  GymUser as DbGymUser,
+  Owner as DbOwner,
+} from '@prisma/client';
 import { prisma } from '../db.js';
 import { newId } from './ids.js';
 
@@ -27,6 +31,14 @@ declare module 'fastify' {
   interface FastifyRequest {
     auth?: AuthedClaims;
   }
+}
+
+export type GymRole = 'admin' | 'staff';
+
+export interface GymAccess {
+  owner: DbOwner;
+  gym: DbGym;
+  membership: DbGymUser;
 }
 
 /**
@@ -88,21 +100,91 @@ export async function getAuthenticatedOwner(req: FastifyRequest): Promise<DbOwne
 }
 
 /**
- * Returns the authenticated owner and their gym. Throws 404 with a
- * `code: 'NO_GYM'` hint if the owner hasn't completed setup yet — the
- * frontend uses this to redirect to /setup.
+ * Resolves the gym the request should operate on. Looks up active GymUser
+ * rows for the caller:
+ *
+ *  - 0 rows  → 403 NO_GYM_ACCESS
+ *  - 1 row   → that gym
+ *  - 2+ rows → use X-Gym-Id header if provided; otherwise 409 MULTIPLE_GYMS
+ *
+ * Replaces the old getOwnerGym() which read Gym.ownerId directly.
  */
-export async function getOwnerGym(req: FastifyRequest): Promise<{
-  owner: DbOwner;
-  gym: DbGym;
-}> {
+export async function getGymAccess(req: FastifyRequest): Promise<GymAccess> {
   const owner = await getAuthenticatedOwner(req);
-  const gym = await prisma.gym.findFirst({ where: { ownerId: owner.id } });
-  if (!gym) {
-    throw Object.assign(new Error('No gym configured'), {
-      statusCode: 404,
-      code: 'NO_GYM',
+  const memberships = await prisma.gymUser.findMany({
+    where: { ownerId: owner.id, status: 'active' },
+    include: { gym: true },
+  });
+  if (memberships.length === 0) {
+    throw Object.assign(new Error('No gym access yet'), {
+      statusCode: 403,
+      code: 'NO_GYM_ACCESS',
     });
   }
-  return { owner, gym };
+
+  const headerGymId = req.headers['x-gym-id'];
+  const requestedGymId = Array.isArray(headerGymId) ? headerGymId[0] : headerGymId;
+
+  let chosen: (typeof memberships)[number] | undefined;
+  if (requestedGymId) {
+    chosen = memberships.find((m) => m.gymId === requestedGymId);
+    if (!chosen) {
+      throw Object.assign(new Error('Gym access not found'), {
+        statusCode: 403,
+        code: 'NO_GYM_ACCESS',
+      });
+    }
+  } else if (memberships.length === 1) {
+    chosen = memberships[0]!;
+  } else {
+    throw Object.assign(new Error('Multiple gyms — select one via X-Gym-Id'), {
+      statusCode: 409,
+      code: 'MULTIPLE_GYMS',
+    });
+  }
+
+  if (chosen.gym.status !== 'active') {
+    throw Object.assign(new Error('Gym is not active'), {
+      statusCode: 403,
+      code: 'GYM_NOT_ACTIVE',
+    });
+  }
+
+  const { gym, ...rest } = chosen;
+  return { owner, gym, membership: { ...rest, gymId: gym.id } };
+}
+
+/**
+ * Wraps getGymAccess and enforces that the caller's role is in `allowed`.
+ * Throws 403 FORBIDDEN_ROLE otherwise. Backend role enforcement is the
+ * source of truth — UI hiding alone is not enough.
+ */
+export async function requireGymRole(
+  req: FastifyRequest,
+  allowed: GymRole[],
+): Promise<GymAccess> {
+  const access = await getGymAccess(req);
+  if (!allowed.includes(access.membership.role as GymRole)) {
+    throw Object.assign(new Error('You do not have permission to perform this action'), {
+      statusCode: 403,
+      code: 'FORBIDDEN_ROLE',
+    });
+  }
+  return access;
+}
+
+/**
+ * Asserts the authenticated user is a platform admin (Kasrat team member).
+ * Used to gate gym creation, access-request review, and other ops outside
+ * any single gym's scope.
+ */
+export async function requirePlatformAdmin(req: FastifyRequest): Promise<DbOwner> {
+  const owner = await getAuthenticatedOwner(req);
+  if (!owner.isPlatformAdmin) {
+    throw Object.assign(new Error('Platform admin required'), {
+      statusCode: 403,
+      code: 'NOT_PLATFORM_ADMIN',
+    });
+  }
+  return owner;
 }

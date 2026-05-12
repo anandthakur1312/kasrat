@@ -12,6 +12,7 @@ export function toOwner(row: {
   name: string;
   email: string;
   phone: string | null;
+  isPlatformAdmin: boolean;
   createdAt: DbDate;
 }): Owner {
   return {
@@ -20,6 +21,7 @@ export function toOwner(row: {
     name: row.name,
     email: row.email,
     phone: row.phone,
+    isPlatformAdmin: row.isPlatformAdmin,
     createdAt: asISO(row.createdAt),
   };
 }
